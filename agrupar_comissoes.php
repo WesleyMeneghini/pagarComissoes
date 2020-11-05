@@ -3,19 +3,9 @@
 require_once("includes/config.php");
 require_once('includes/functions.php');
 
-function agruparComissoes(){
-
-    $log = true;
-
-    global $conect;
-    $sql = "SELECT * FROM busca_comissoes where referencia like '%BRADESCO%' and data_inicial >= '2019-10-12' and data_final <= '2021-10-16'";
-    // $sql = "SELECT * FROM busca_comissoes where data_inicial > '2019-10-18' and referencia like 'INTERMEDICA%'";
-    $select_comissoes = mysqli_query($conect, $sql);
-    $tblComissoes = array();
-    while ($rs_comissoes = mysqli_fetch_array($select_comissoes)){
-        array_push($tblComissoes, $rs_comissoes);
-    }
-
+function agruparComissoes($array){
+    $tblComissoes = $array;
+    $log = false;
 
     $newArrayComissoes = array();
     $processados = array();
@@ -24,10 +14,9 @@ function agruparComissoes(){
     // Agrupar as comissoes que tem o mesmo numero da apólice e parcela
     for ($i = 0 ; $i <= sizeof($tblComissoes); $i++ ){
 
-        if (! in_array( $tblComissoes[$i]['contrato_atual']."-".$tblComissoes[$i]['referencia']."-".$tblComissoes[$i]['parcela'], $processados)){
+        if (! in_array( $tblComissoes[$i]['contrato_atual']."-".$tblComissoes[$i]['referencia']."-".$tblComissoes[$i]['parcela']."-".$tblComissoes[$i]['porcentagem'], $processados)){
             
-            $teste = 
-            array_push($processados, $tblComissoes[$i]['contrato_atual']."-".$tblComissoes[$i]['referencia']."-".$tblComissoes[$i]['parcela']);
+            array_push($processados, $tblComissoes[$i]['contrato_atual']."-".$tblComissoes[$i]['referencia']."-".$tblComissoes[$i]['parcela']."-".$tblComissoes[$i]['porcentagem']);
             // $processados[$countNewComission] = $tblComissoes[$i]['contrato_atual']."-".$tblComissoes[$i]['referencia'];
 
             $occ = 0;
@@ -39,7 +28,8 @@ function agruparComissoes(){
             for ($j = $i ; $j <= sizeof($tblComissoes); $j++ ){
 
                 if ($occ == 1 && ($tblComissoes[$i]['contrato_atual'] == $tblComissoes[$j]['contrato_atual'])
-                        && $tblComissoes[$i]['parcela'] == $tblComissoes[$j]['parcela']){
+                        && $tblComissoes[$i]['parcela'] == $tblComissoes[$j]['parcela']
+                        && $tblComissoes[$i]['porcentagem'] == $tblComissoes[$j]['porcentagem']){
                     if ($log){
                         if($tblComissoes[$i]['referencia'] == "BRADESCO-SAUDE" || $tblComissoes[$i]['referencia'] == "BRADESCO-DENTAL"){
                             echo "<p>".$tblComissoes[$i]['contrato_atual']." - ".$tblComissoes[$i]['parcela']."</p>";
@@ -53,7 +43,8 @@ function agruparComissoes(){
                 }
 
                 if ($occ == 0 && ($tblComissoes[$i]['contrato_atual'] == $tblComissoes[$j]['contrato_atual']) 
-                        && $tblComissoes[$i]['parcela'] == $tblComissoes[$j]['parcela']){
+                        && $tblComissoes[$i]['parcela'] == $tblComissoes[$j]['parcela']
+                        && $tblComissoes[$i]['porcentagem'] == $tblComissoes[$j]['porcentagem']){
                     if ($log){
                         if($tblComissoes[$i]['referencia'] == "BRADESCO-SAUDE" || $tblComissoes[$i]['referencia'] == "BRADESCO-DENTAL"){
                             echo "<p>".$tblComissoes[$i]['contrato_atual']." - ".$tblComissoes[$i]['parcela']."</p>";
