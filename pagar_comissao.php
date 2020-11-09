@@ -5,7 +5,6 @@ require_once('includes/functions.php');
 
 function lancaComissaoVitaliciaSemDistribuicao($comissao){
     global $conect;
-
     $valor_calc = $comissao['valor_calc'];
     $id_origem = $comissao['id_origem'];
     $id_destino = $comissao['id_destino'];
@@ -26,17 +25,20 @@ function lancaComissaoVitaliciaSemDistribuicao($comissao){
         $refDental = 0;
     }
 
+    if ($porcentagem == null){
+        $porcentagem = 0;
+    }
+
     $insert_transacoes = "INSERT INTO tbl_transacoes
         (data, descricao, id_origem, id_destino, valor, id_finalizado, parcela, id_transacao, dental, porcentagem) values
-        ('$data', '$descricao', '$id_origem', '$id_destino', '$valor_calc', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', $refDental, $porcentagem);";
-
+        ('$data', '$descricao', '$id_origem', '$id_destino', '$valor_calc', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', $refDental, '$porcentagem');";
+    echo $insert_transacoes;
     mysqli_query($conect, $insert_transacoes) or die(mysqli_error($conect));
 }
 
 function pagarComissoes($comissao){
 
     global $conect;
-
     $valor_calc = $comissao['valor_calc'];
     $id_origem = $comissao['id_origem'];
     $id_destino = $comissao['id_destino'];
@@ -56,6 +58,9 @@ function pagarComissoes($comissao){
     }else{
         $refDental = 0;
     }
+    if ($porcentagem == null){
+        $porcentagem = 0;
+    }
 
 
     /*
@@ -68,9 +73,9 @@ function pagarComissoes($comissao){
 
     $insert_transacoes = "INSERT INTO tbl_transacoes
     (data, descricao, id_origem, id_destino, valor, id_finalizado, parcela, id_transacao, dental, porcentagem) values
-    ('$data', '$descricao', '$id_origem', '$id_destino', '$valor_calc', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', $refDental, $porcentagem);";
+    ('$data', '$descricao', '$id_origem', '$id_destino', '$valor_calc', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', $refDental, '$porcentagem');";
 
-    // echo $insert_transacoes;
+    echo $insert_transacoes;
 
     mysqli_query($conect, $insert_transacoes) or die(mysqli_error($conect));
 

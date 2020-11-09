@@ -76,28 +76,37 @@ function processo($array){
         $idBuscaComissao = $comissaoRow['id'];
         $referencia = (string) strtoupper($comissaoRow['referencia']);
         $nomeContrato = $comissaoRow['nome_contrato'];
-        // echo $nomeContrato;
+        echo json_encode($comissaoRow);
         $contrato = $comissaoRow['contrato_atual'];
         $proposta = $comissaoRow['proposta'];
         $data = $comissaoRow['data_pagamento'];
         $valor_calc = $comissaoRow['comissao'];
-        $parcela = $comissaoRow['parcela'];
+        $parcela = intval($comissaoRow['parcela']);
         $porcentagem = $comissaoRow['porcentagem'];
-
+        
+        echo "<h1>Parcela: $parcela</h1>";
         if ($parcela > 3){
             $idTransacao = 7;
         }
+        echo "<h1>Transação: $idTransacao</h1>";
         
         $valorBrutoComissao = 0.0;
+        $contaOrigemNome = "";
 
         $ref_arr = explode(" ", $referencia);
         switch(strtoupper($ref_arr[0])){
             case "AFFINITY":
                 if (in_array("CNU", $ref_arr)){
                     $operadora = "UNIMED";
+                    $contaOrigemNome = "AFFINITY UNIMED";
+                    $idOperadora = 6;
                 }elseif(in_array("SOMPO", $ref_arr)){
                     $operadora = "SOMPO";
+                    $contaOrigemNome = "AFFINITY SOMPO";
+                    $idOperadora = 12;
                 }
+
+                $contrato = $proposta;
                 break;
             case "INTERMEDICA-PJ":
                 $operadora = "NOTREDAME";
@@ -199,6 +208,15 @@ function processo($array){
                     $operadora = 'NEXT';
                 }
                 if( $operadora == $contasRow['titulo']){
+                    $idOrigem = $contasRow['id'];
+                    if ($log){
+                        echo "<p> <strong>id_conta: </strong>".$idOrigem."</p>";
+                    }
+                    break;
+                }
+                
+                # Pesquida para encontrar as contas da AFFINITY
+                if( $contaOrigemNome == $contasRow['titulo']){
                     $idOrigem = $contasRow['id'];
                     if ($log){
                         echo "<p> <strong>id_conta: </strong>".$idOrigem."</p>";
