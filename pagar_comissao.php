@@ -30,9 +30,9 @@ function lancaComissaoVitaliciaSemDistribuicao($comissao){
     }
 
     $insert_transacoes = "INSERT INTO tbl_transacoes
-        (data, descricao, id_origem, id_destino, valor, id_finalizado, parcela, id_transacao, dental, porcentagem) values
-        ('$data', '$descricao', '$id_origem', '$id_destino', '$valor_calc', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', $refDental, '$porcentagem');";
-    echo $insert_transacoes;
+        (data, descricao, id_origem, id_destino, valor, id_finalizado, parcela, id_transacao, dental, porcentagem, id_usuario) values
+        ('$data', '$descricao', '$id_origem', '$id_destino', '$valor_calc', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', $refDental, '$porcentagem', 0);";
+    // echo $insert_transacoes;
     mysqli_query($conect, $insert_transacoes) or die(mysqli_error($conect));
 }
 
@@ -62,7 +62,6 @@ function pagarComissoes($comissao){
         $porcentagem = 0;
     }
 
-
     /*
     *
     *
@@ -72,10 +71,10 @@ function pagarComissoes($comissao){
     */
 
     $insert_transacoes = "INSERT INTO tbl_transacoes
-    (data, descricao, id_origem, id_destino, valor, id_finalizado, parcela, id_transacao, dental, porcentagem) values
-    ('$data', '$descricao', '$id_origem', '$id_destino', '$valor_calc', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', $refDental, '$porcentagem');";
+    (data, descricao, id_origem, id_destino, valor, id_finalizado, parcela, id_transacao, dental, porcentagem, id_usuario) values
+    ('$data', '$descricao', '$id_origem', '$id_destino', '$valor_calc', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', $refDental, '$porcentagem', '0');";
 
-    echo $insert_transacoes;
+    // echo $insert_transacoes;
 
     mysqli_query($conect, $insert_transacoes) or die(mysqli_error($conect));
 
@@ -84,8 +83,11 @@ function pagarComissoes($comissao){
     $sql = "SELECT * FROM tbl_finalizado where id = '$txt_id_finalizado'";
 
     $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
+    $id_corretor_insert = "";
+    echo var_dump($result);
 
     if ($rs = mysqli_fetch_array($result)){
+        echo json_encode($rs);
         /******DADOS SOBRE A PROPOSTA*****/
 
         //Infos úteis do contrato
@@ -99,6 +101,8 @@ function pagarComissoes($comissao){
         //Usuários base
         $usuario[] = $rs['id_corretor'];
         $usuario[] = $rs['id_produtor'];
+        $usuario[] = $rs['id_companhia'];
+        $usuario[] = $rs['id_account'];
         $usuario[] = $rs['id_implantador'];
         $usuario[] = $rs['id_call_center'];
 
@@ -129,7 +133,7 @@ function pagarComissoes($comissao){
 
         $id_tipo_comissao_corretor = 0;
 
-        $sql = "select u.id_tipo_comissao from tbl_usuario as u where id_usuario = '".$rs['id_corretor']."'";
+        $sql = "select u.id_tipo_comissao from tbl_usuario as u where id_usuario = '".$rs['id_corretor']."';";
         $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
         if ($rs = mysqli_fetch_array($result)){
             $id_tipo_comissao_corretor = $rs['id_tipo_comissao'];
@@ -139,7 +143,7 @@ function pagarComissoes($comissao){
         //print_r($usuario);
         while ($contador < count($usuario)){
             $valor_venda = 0;
-
+            
             $sql = "select cmc.* from tbl_usuario as u inner join tbl_config_meta_comissionamento as cmc on cmc.id_tipo_comissao = u.id_tipo_comissao where id_usuario = '".$usuario[$contador]."'";
             $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
             while ($rs = mysqli_fetch_array($result)){
@@ -153,6 +157,8 @@ function pagarComissoes($comissao){
                     $sql2 = "select sum(valor) as valor_venda from tbl_finalizado where 
                     data_lancamento like '".date("Y-m-", strtotime($data_venda))."%' and id_corretor = '".$usuario[$contador]."' and portabilidade = '".$rs['empresarial']."' and id_tipo_venda = '".$rs['id_tipo_venda']."';";
                 }
+                echo "<br>";
+                echo $sql2;
 
                 $result2 = mysqli_query($conect, $sql2) or die(mysqli_error($conect));
 
@@ -163,6 +169,8 @@ function pagarComissoes($comissao){
 
             $corretor = 0;
             $produtor = 0;
+            $closer = 0;
+            $account = 0;
 
             if ($contador == 0){
                 $corretor = 1;
@@ -172,8 +180,15 @@ function pagarComissoes($comissao){
                 $produtor = 1;
             }
 
-            $sql = "select u.id_tipo_comissao, u.id_tipo_empresa, tcv.* from tbl_usuario as u inner join tbl_tipo_comissao_valor as tcv on tcv.id_tipo_comissao = u.id_tipo_comissao where u.id_usuario = '".$usuario[$contador]."' and tcv.parcela = '$txt_parcela' and tcv.id_tipo_venda = '$id_tipo_venda' and tcv.call_center = '$call_center' and tcv.empresarial = '$empresarial' and tcv.portabilidade = '$portabilidade' and tcv.corretor = '$corretor' and tcv.produtor = '$produtor' and ('$valor_venda' between tcv.meta_min and if(tcv.meta_max > 0, tcv.meta_max, '$valor_venda')) and if(tcv.id_tipo_comissao_corretor = 0, '$id_tipo_comissao_corretor', tcv.id_tipo_comissao_corretor) = '$id_tipo_comissao_corretor'";
-            // echo $sql;
+            if ($contador == 2){
+                $closer = 1;
+            }
+
+            if ($contador == 3){
+                $account = 1;
+            }
+
+            $sql = "SELECT u.id_tipo_comissao, u.id_tipo_empresa, tcv.* FROM tbl_usuario AS u INNER JOIN tbl_tipo_comissao_valor AS tcv ON tcv.id_tipo_comissao = u.id_tipo_comissao WHERE u.id_usuario = '".$usuario[$contador]."' AND tcv.parcela = '$txt_parcela' AND tcv.id_tipo_venda = '$id_tipo_venda' and tcv.call_center = '$call_center' and tcv.empresarial = '$empresarial' AND tcv.portabilidade = '$portabilidade' and tcv.corretor = '$corretor' AND tcv.produtor = '$produtor' AND tcv.closer = '$closer' AND tcv.account = '$account' AND ('$valor_venda' between tcv.meta_min and if(tcv.meta_max > 0, tcv.meta_max, '$valor_venda')) AND IF(tcv.id_tipo_comissao_corretor = 0, '$id_tipo_comissao_corretor', tcv.id_tipo_comissao_corretor) = '$id_tipo_comissao_corretor'";
             $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
 
             if ($rs = mysqli_fetch_array($result)){
@@ -189,7 +204,7 @@ function pagarComissoes($comissao){
                     $id_conta_insert = $rs['id_conta'];
                     $valor_calc_liquid = $valor_calc_base * $rs['porcentagem'] / 100;
                     $irrf = 0;
-
+                    
                     if ($tipo_empresa < 2){
                         $valor_calc_liquid = $valor_calc_liquid * 0.915;
                     }else{
@@ -200,17 +215,14 @@ function pagarComissoes($comissao){
                     //echo "<br>".$valor_calc_base." - ".$valor_calc_liquid." - ".$rs['porcentagem']." - ".$rs['imposto']." / ";
 
                     if ($corretor == 1){
-                        $transacao = "INSERT INTO tbl_transacoes(data,descricao,id_origem,id_destino,valor, id_finalizado, parcela, vendedor, id_transacao, id_bruto, irrf, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '".$valor_calc_liquid."', '$txt_id_finalizado', '$txt_parcela', '1', '$id_transacao', '$id_bruto', '$irrf', '$refDental') ";
-
+                        $transacao = "INSERT INTO tbl_transacoes(data,descricao,id_origem,id_destino,valor, id_finalizado, parcela, vendedor, id_transacao, id_bruto, irrf, id_usuario, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '".$valor_calc_liquid."', '$txt_id_finalizado', '$txt_parcela', '1', '$id_transacao', '$id_bruto', '$irrf', '0', '$refDental') ";
                         mysqli_query($conect, $transacao) or die(mysqli_error($conect));
                     }else{
-                        $transacao = "INSERT INTO tbl_transacoes(data,descricao,id_origem,id_destino,valor, id_finalizado, parcela, id_transacao, id_bruto, irrf, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '".$valor_calc_liquid."', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', '$id_bruto', '$irrf', '$refDental') ";
-
+                        $transacao = "INSERT INTO tbl_transacoes(data,descricao,id_origem,id_destino,valor, id_finalizado, parcela, id_transacao, id_bruto, irrf, id_usuario, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '".$valor_calc_liquid."', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', '$id_bruto', '$irrf', '0', '$refDental') ";
                         mysqli_query($conect, $transacao) or die(mysqli_error($conect));
                     }
                 }
             }
-
             $contador++;
         }
     }
