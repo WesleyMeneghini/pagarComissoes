@@ -84,10 +84,8 @@ function pagarComissoes($comissao){
 
     $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
     $id_corretor_insert = "";
-    echo var_dump($result);
 
     if ($rs = mysqli_fetch_array($result)){
-        echo json_encode($rs);
         /******DADOS SOBRE A PROPOSTA*****/
 
         //Infos úteis do contrato
@@ -157,8 +155,6 @@ function pagarComissoes($comissao){
                     $sql2 = "select sum(valor) as valor_venda from tbl_finalizado where 
                     data_lancamento like '".date("Y-m-", strtotime($data_venda))."%' and id_corretor = '".$usuario[$contador]."' and portabilidade = '".$rs['empresarial']."' and id_tipo_venda = '".$rs['id_tipo_venda']."';";
                 }
-                echo "<br>";
-                echo $sql2;
 
                 $result2 = mysqli_query($conect, $sql2) or die(mysqli_error($conect));
 
