@@ -85,6 +85,7 @@ function processo($array){
         $valor_calc = $comissaoRow['comissao'];
         $parcela = intval($comissaoRow['parcela']);
         $porcentagem = $comissaoRow['porcentagem'];
+        $dataPagamento = $comissaoRow['data_pagamento'];
         if ($parcela > 3){
             $idTransacao = 7;
         }
@@ -351,6 +352,7 @@ function processo($array){
                     }
                 }
                 
+                // Regra para Pagar o valor bruto se a operadora for notredame
                 if ($idOperadora == 1 && $parcela < 4){
                     $valor_calc = $valorBrutoComissao;
                     echo "<p><strong>Valor Bruto Comissao: </strong>R$ ".$valor_calc."</p>";
@@ -371,7 +373,9 @@ function processo($array){
                     'id_transacao' => $idTransacao,
                     'dental' => $refDental,
                     'operadora' => $referencia,
-                    'parcelasNaoPagas' => $parcelasNaoPagas
+                    'parcelasNaoPagas' => $parcelasNaoPagas,
+                    'valor_bruto' => $valorBrutoComissao,
+                    'dataPagamento' => $dataPagamento
                 ];
                 
 

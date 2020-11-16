@@ -12,10 +12,11 @@ $comissoesEncontradasString = "";
 if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     $idOperadora = $_GET['operadora'];
     $dataInicial = $_GET['data_inicial'];
+    $dataFinal = $_GET['data_final'];
     if ($idOperadora == "" || $idOperadora == null || $idOperadora == 0) {
         $sql = "select * FROM busca_comissoes where  data_inicial >= '$dataInicial';";
     } else {
-        $sql = "select * FROM busca_comissoes where id_operadora = '$idOperadora' and data_inicial >= '$dataInicial';";
+        $sql = "select * FROM busca_comissoes where id_operadora = '$idOperadora' and data_inicial >= '$dataInicial' and data_final <= '$dataFinal';";
     }
 
     // echo $sql;
@@ -37,24 +38,44 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
 
     $operadora = "";
     foreach ($comissoesProcessadas[0] as $comissao) {
-        // echo "<p>".json_encode($comissao)."</p>";
+        $parcela = $comissao['txt_parcela'];
+        $referencia = $comissao['operadora'];
+        $dataPagamento = $comissao['dataPagamento'];
+        if ($parcela < 10) {
+            $parcela = "0" . $parcela;
+        }
+
         if ($operadora == "" || $operadora != $comissao['operadora']) {
             $operadora = $comissao['operadora'];
-            $comissoesEncontradasString .= "<h5>$operadora</h5>";
+            // $comissoesEncontradasString .= "<h5>$operadora</h5>";
         }
+        if ($dataPagamento != "" && $dataPagamento != null){
+            $dataPagamento = date('d/m/y', strtotime($comissao['data_pagamento']));
+        }
+
+        $parcelasNaoPagas = "";
+        foreach ($comissao['parcelasNaoPagas'] as $parc) {
+            if ($parcelasNaoPagas == "") {
+                $parcelasNaoPagas .= "<li><strong class='red-text'>Parcelas não lançadas: </strong>";
+            }
+            $parcelasNaoPagas .= $parc . ", ";
+        }
+        $parcelasNaoPagas .= "</li>";
 
         $comissoesEncontradasString .= '
             <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
                 <div class="collapsible-header">
-                ' . $comissao['descricao'] . '
+                ' . $operadora . ' - ' . $comissao['descricao'] . '
                 <span class="new badge"></span>
                 </div>
                 <div class="collapsible-body">
                     <ul>
                         <li><strong>Numero Apólice: </strong> ' . $comissao['n_apolice'] . '</li>
-                        <li><strong>Porcentagem: </strong> ' . $comissao['porcentagem'] . '%</li>
-                        <li><strong>Parcela: </strong> ' . $comissao['txt_parcela'] . '</li>
                         <li><strong>Valor: </strong> R$ ' . number_format($comissao['valor_calc'], 2, ',', '.') . '</li>
+                        <li><strong>Porcentagem: </strong> ' . $comissao['porcentagem'] . '%</li>
+                        <li><strong>Parcela: </strong> ' . $parcela . '</li>
+                        ' . $parcelasNaoPagas . '
+                        <li><strong>Data de Pagamento: </strong> ' .  $dataPagamento . '</li>
                         <li><strong>ID Finalizado: </strong> ' .  $comissao['txt_id_finalizado'] . '</li>
                     </ul>
                 </div>
@@ -62,8 +83,124 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     }
     $comissoesEncontradasString .= '</ul></div>';
 
+
+
+
+    $comissoesPagasString = '<div id="test2" class="col s12"><ul class="collapsible popout expandable">';
+
+    $operadora = "";
+    foreach ($comissoesPagas as $comissao) {
+        $parcela = $comissao['txt_parcela'];
+        $dataPagamento = $comissao['dataPagamento'];
+        if ($parcela < 10) {
+            $parcela = "0" . $parcela;
+        }
+
+        if ($operadora == "" || $operadora != $comissao['operadora']) {
+            $operadora = $comissao['operadora'];
+            // $comissoesEncontradasString .= "<h5>$operadora</h5>";
+        }
+
+        $comissoesPagasString .= '
+            <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
+                <div class="collapsible-header">
+                ' . $operadora . ' - ' . $comissao['descricao'] . '
+                <span class="new badge"></span>
+                </div>
+                <div class="collapsible-body">
+                    <ul>
+                        <li><strong>Numero Apólice: </strong> ' . $comissao['n_apolice'] . '</li>
+                        <li><strong>Porcentagem: </strong> ' . $comissao['porcentagem'] . '%</li>
+                        <li><strong>Parcela: </strong>' . $parcela . '</li>
+                        <li><strong>Valor: </strong> R$ ' . number_format($comissao['valor_calc'], 2, ',', '.') . '</li>
+                        <li><strong>ID Finalizado: </strong> ' .  $comissao['txt_id_finalizado'] . '</li>
+                        <li><strong>Data Pagamento: </strong> ' .  $comissao['dataPagamento'] . '</li>
+                    </ul>
+                </div>
+            </li>';
+    }
+    $comissoesPagasString .= '</ul></div>';
+
+
+
+
+    $comissoesNaoEncontradasString = '<div id="test3" class="col s12"><ul class="collapsible popout expandable">';
+
+    $referencia = "";
+    foreach ($comissoesNaoEncontradas as $comissao) {
+        $parcela = $comissao['txt_parcela'];
+        $dataPagamento = $comissao['data_pagamento'];
+        if ($parcela < 10) {
+            $parcela = "0" . $parcela;
+        }
+        if($comissao['referencia'] == 'AMIL'){
+            $comissao['contrato_atual'] = $comissao['proposta'];
+        }
+
+        if ($dataPagamento != "" && $dataPagamento != null){
+            $dataPagamento = date('d/m/y', strtotime($comissao['data_pagamento']));
+        }
+
+        if ($referencia == "" || $referencia != $comissao['referencia']) {
+            $operadora = $comissao['referencia'];
+            // $comissoesEncontradasString .= "<h5>$referencia</h5>";
+        }
+
+        $comissoesNaoEncontradasString .= '
+            <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
+                <div class="collapsible-header">
+                ' . $comissao['referencia'] . ' - ' . $comissao['nome_contrato'] . '
+                <span class="new badge"></span>
+                </div>
+                <div class="collapsible-body">
+                    <ul>
+                        <li><strong>Numero Apólice: </strong> ' . $comissao['contrato_atual'] . '</li>
+                        <li><strong>Porcentagem: </strong> ' . $comissao['porcentagem'] . '%</li>
+                        <li><strong>Parcela: </strong>' . $comissao['parcela'] . '</li>
+                        <li><strong>Valor: </strong> R$ ' . number_format($comissao['comissao'], 2, ',', '.') . '</li>
+                        <li><strong>Data Pagamento: </strong> ' . $dataPagamento . '</li>
+                    </ul>
+                </div>
+            </li>';
+    }
+    $comissoesNaoEncontradasString .= '</ul></div>';
+
+
+
+    $comissoesNegativasString = '<div id="test4" class="col s12"><ul class="collapsible popout expandable">';
+
+    $operadora = "";
+    foreach ($comissoesNegativas as $comissao) {
+        $parcela = $comissao['txt_parcela'];
+        if ($parcela < 10) {
+            $parcela = "0" . $parcela;
+        }
+
+        if ($operadora == "" || $operadora != $comissao['operadora']) {
+            $operadora = $comissao['operadora'];
+            // $comissoesEncontradasString .= "<h5>$operadora</h5>";
+        }
+
+        $comissoesNegativasString .= '
+            <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
+                <div class="collapsible-header">
+                ' . $operadora . ' - ' . $comissao['descricao'] . '
+                <span class="new badge"></span>
+                </div>
+                <div class="collapsible-body">
+                    <ul>
+                        <li><strong>Numero Apólice: </strong> ' . $comissao['n_apolice'] . '</li>
+                        <li><strong>Porcentagem: </strong> ' . $comissao['porcentagem'] . '%</li>
+                        <li><strong>Parcela: </strong>' . $parcela . '</li>
+                        <li><strong>Valor: </strong> R$ ' . number_format($comissao['valor_calc'], 2, ',', '.') . '</li>
+                        <li><strong>ID Finalizado: </strong> ' .  $comissao['txt_id_finalizado'] . '</li>
+                    </ul>
+                </div>
+            </li>';
+    }
+    $comissoesNegativasString .= '</ul></div>';
     // Comissoes já pagas
-    
+
 
     // $comissoesEncontradasString = "";
 
@@ -80,7 +217,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     //     }
 
     //     echo '
-    
+
     //             <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
     //                 <div class="collapsible-header">
     //                 ' . $comissao['descricao'] . '
@@ -186,42 +323,52 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
                 <div class="input-field col s6 ">
 
                     <select class="browser-default" name="operadora">
+
                         <option value="0" selected>Todas as Operadoras</option>
                         <?php
                         $sql = "SELECT * FROM tbl_operadora;";
                         $select = mysqli_query($conect, $sql) or die(mysqli_error($conect));
                         while ($rs_operadora = mysqli_fetch_array($select)) {
                             if ($_GET['operadora'] == $rs_operadora['id']) {
-                                echo "<option value='" . $rs_operadora['id'] . "' selected>" . $rs_operadora['titulo'] . "</option>";
+                                echo "<option value='" . $rs_operadora['id'] . "' id='operadoras' selected>" . $rs_operadora['titulo'] . "</option>";
                             } else {
-                                echo "<option value='" . $rs_operadora['id'] . "'>" . $rs_operadora['titulo'] . "</option>";
+                                echo "<option value='" . $rs_operadora['id'] . "' id='operadoras'>" . $rs_operadora['titulo'] . "</option>";
                             }
                         }
 
                         ?>
-
                     </select>
+                    <!-- <label>Operadoras</label> -->
+
                 </div>
                 <div class="input-field col s3 ">
                     <?php
                     if (isset($_GET['data_inicial'])) {
                         $dataInicial = $_GET['data_inicial'];
-                        echo "<input type='date' name='data_inicial' value='$dataInicial' required />";
+                        echo "<input type='date' id='data_inicial' name='data_inicial' value='$dataInicial' required />";
                     } else {
-                        echo '<input type="date" name="data_inicial" required />';
+                        echo '<input type="date" id="data_inicial" name="data_inicial" required />';
                     }
                     ?>
+                    <label for="data_inicial">Data Inicial</label>
                 </div>
                 <div class="input-field col s3 ">
                     <?php
                     if (isset($_GET['data_final'])) {
                         $dataFinal = $_GET['data_final'];
-                        echo "<input type='date' name='data_final' value='$dataFinal' />";
+                        echo "<input type='date' id='data_final' name='data_final' value='$dataFinal' />";
                     } else {
-                        echo '<input type="date" name="data_final" />';
+                        echo '<input type="date" id="data_final" name="data_final" />';
                     }
                     ?>
+                    <label for="data_final">Data Final</label>
                 </div>
+                <p>
+                    <label>
+                        <input type="checkbox" class="filled-in" />
+                        <span>Salvar no Sistema</span>
+                    </label>
+                </p>
 
             </div>
             <div class="row">
@@ -249,22 +396,30 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     <div class="container">
         <div class="row">
             <ul class="tabs tabs-fixed-width tab-demo z-depth-1">
-                <li class="tab"><a class="active" href="#test1">Encontradas (<?= sizeof($comissoesEncontradas); ?>)</a></li>
-                <li class="tab"><a href="#test2">Pagas (<?= sizeof($comissoesPagas); ?>)</a></li>
-                <li class="tab"><a href="#test3">Nao encontradas (<?= sizeof($comissoesNaoEncontradas); ?>)</a></li>
-                <li class="tab"><a href="#test4">Negativas (<?= sizeof($comissoesNegativas); ?>)</a></li>
+                <?php if (sizeof($comissoesEncontradas) > 0) { ?>
+                    <li class="tab"><a class="active" href="#test1">Encontradas (<?= sizeof($comissoesEncontradas); ?>)</a></li>
+                <?php } ?>
+                <?php if (sizeof($comissoesPagas) > 0) { ?>
+                    <li class="tab"><a href="#test2">Pagas (<?= sizeof($comissoesPagas); ?>)</a></li>
+                <?php } ?>
+                <?php if (sizeof($comissoesEncontradas) > 0) { ?>
+                    <li class="tab"><a href="#test3">Nao encontradas (<?= sizeof($comissoesNaoEncontradas); ?>)</a></li>
+                <?php } ?>
+                <?php if (sizeof($comissoesNegativas) > 0) { ?>
+                    <li class="tab"><a href="#test4">Negativas (<?= sizeof($comissoesNegativas); ?>)</a></li>
+                <?php } ?>
             </ul>
             <div id="test1" class="col s12">
-                <?=$comissoesEncontradasString;?>
+                <?= $comissoesEncontradasString; ?>
             </div>
             <div id="test2" class="col s12">
-                <p>Test 2</p>
+                <?= $comissoesPagasString; ?>
             </div>
             <div id="test3" class="col s12">
-                <p>Test 3</p>
+                <?= $comissoesNaoEncontradasString; ?>
             </div>
             <div id="test4" class="col s12">
-                <p>Test 4</p>
+                <?= $comissoesNegativasString; ?>
             </div>
         </div>
 
@@ -313,7 +468,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
         //         }
 
         //         echo '
-            
+
         //                 <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
         //                     <div class="collapsible-header">
         //                     ' . $comissao['descricao'] . '
@@ -347,7 +502,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
         //         }
 
         //         echo '
-            
+
         //                 <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
         //                     <div class="collapsible-header">
         //                     ' . $comissao['descricao'] . '
