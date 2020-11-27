@@ -5,16 +5,17 @@ require_once('includes/functions.php');
 require_once "agrupar_comissoes.php";
 require_once "pagar_comissao.php";
 
-$salvar = false;
 $log = false;
 
-$tblOperadoras = array();
-$tblContas = array();
 $tblFinalizado = array();
 $tblComissoes = array();
+$tblContas = array();
 
 # SELECIONAR AS COMISSOES QUE SERAO PROCESSADAS
-// $sql = "SELECT * FROM busca_comissoes where referencia like '%AMIL%' and data_inicial >= '2020-10-26' and data_final <= '2020-11-01'";
+// $sql = "select data_inicial, data_final, nome_contrato, data_pagamento, sum(comissao) as comissao, parcela, porcentagem, contrato_atual, id_operadora, id_conta, dental, referencia, contrato_atual, proposta  from busca_comissoes 
+// where id_operadora = 3 and (data_pagamento >= '2020-11-16' and data_pagamento <= '2020-11-22' or data_inicial >= '2020-11-16' and data_final <= '2020-11-22')  
+// group by nome_contrato, contrato_atual, porcentagem, data_pagamento, referencia, proposta, parcela, id_operadora, id_conta, dental, data_inicial, data_final order by data_pagamento, parcela;
+// ";
 
 // // $sql = "select * FROM busca_comissoes where id = 9764;";
 
@@ -23,13 +24,6 @@ $tblComissoes = array();
 //     array_push($tblComissoes, $rs_comissoes);
 // }
 // $comissoes = agruparComissoes($tblComissoes);
-
-# OBTER ALGUNS DADOS DO BANCO PARA NAO FICAR PESQUISANDO TUDO NO BANCO
-$sql = "SELECT * FROM tbl_operadora;";
-$select_operadoras = mysqli_query($conect, $sql);
-while ($rs_operadora = mysqli_fetch_array($select_operadoras)){
-    array_push($tblOperadoras, $rs_operadora);
-}
 
 $sql = "SELECT * FROM tbl_contas;";
 $select_contas = mysqli_query($conect, $sql);
@@ -43,14 +37,13 @@ while ($rs_finalizado = mysqli_fetch_array($select_finalizado)){
     array_push($tblFinalizado, $rs_finalizado);
 }
 
-function processo($array){
+function processo($array, $salvarSistema){
+    $salvar = $salvarSistema;
 
     global $log;
     global $conect;
-    global $tblOperadoras;
-    global $tblContas;
-    global $tblFinalizado;
     global $salvar;
+    global $tblContas;
 
     $comissoes = $array;
 
@@ -58,94 +51,60 @@ function processo($array){
     $comissoesPagas = array();
     $comissoesNaoEncontradas = array();
 
-    for($i = 0 ; $i < sizeof($comissoes)-2; $i++){
+    for($i = 0 ; $i <= sizeof($comissoes)-1; $i++){
+
+        $idFinalizado = 0;
+        $idDestino = 1;
+        $portabilidade = "";
+        $idTransacao = 1;
 
         $comissaoRow = $comissoes[$i];
+
+        // echo json_encode($comissaoRow);
         
-
-        $idOrigem = 0;
-        $idDestino = 1;
-        $idFinalizado = 0;
-
-        $operadora = "";
-        $portabilidade = "";
-        $idOperadora = 0;
-        
-        $idTransacao = 1;
-        $refDental = false;
-
-        
-
-        $idBuscaComissao = $comissaoRow['id'];
         $referencia = (string) strtoupper($comissaoRow['referencia']);
         $nomeContrato = $comissaoRow['nome_contrato'];
         $contrato = $comissaoRow['contrato_atual'];
         $proposta = $comissaoRow['proposta'];
-        $data = $comissaoRow['data_pagamento'];
         $valor_calc = $comissaoRow['comissao'];
         $parcela = intval($comissaoRow['parcela']);
         $porcentagem = $comissaoRow['porcentagem'];
         $dataPagamento = $comissaoRow['data_pagamento'];
+        $baseComissao = $comissaoRow['base_comissao'];
+        $idOperadora = $comissaoRow['id_operadora'];
+        $idOrigem = $comissaoRow['id_conta'];
+        $refDental = $comissaoRow['dental'];
+        $valorBrutoComissao = $comissaoRow['base_comissao'];
+
+
+
         if ($parcela > 3){
             $idTransacao = 7;
         }
         
-        $valorBrutoComissao = 0.0;
-        $contaOrigemNome = "";
 
         $ref_arr = explode(" ", $referencia);
         switch(strtoupper($ref_arr[0])){
             case "AFFINITY":
-                if (in_array("CNU", $ref_arr)){
-                    $operadora = "UNIMED";
-                    $contaOrigemNome = "AFFINITY UNIMED";
-                    $idOperadora = 6;
-                }elseif(in_array("SOMPO", $ref_arr)){
-                    $operadora = "SOMPO";
-                    $contaOrigemNome = "AFFINITY SOMPO";
-                    $idOperadora = 12;
-                }
-
                 $contrato = $proposta;
                 break;
-            case "INTERMEDICA-PJ":
-                $operadora = "NOTREDAME";
-                break;
             case "INTERMEDICA-PME":
-                $operadora = "NOTREDAME";
                 if ($proposta > 0){
                     $contrato = $proposta;
                 }
                 break;
             case "AMIL":
-                $operadora = "AMIL";
                 $contrato = $proposta;
                 break;
             case "NEXT":
-                $operadora = "AMIL FÁCIL";
                 $contrato = $proposta;
                 break;
-            case "BRADESCO-SAUDE":
-                $operadora = "BRADESCO";
-                break;
-            case "BRADESCO-DENTAL":
-                $operadora = "BRADESCO";
-                $refDental = true;
-                $contrato = $contrato - 1;
-                break;
+            // case "BRADESCO-DENTAL":
+            //     $contrato = $contrato - 1;
+            //     break;
             default:
-                $operadora = "";
-
-        }
-
-        for($j = 0 ; $j < sizeof($tblOperadoras)-1; $j++){
-            $operadoraRow = $tblOperadoras[$j];
-            // echo "<p> ".$operadora."</p>";
-            if( $operadora == $operadoraRow['titulo']){
-                $idOperadora = $operadoraRow['id'];
-                // echo "<p> ".$idOperadora."</p>";
                 break;
-            }
+
         }
 
         if ($log){
@@ -154,7 +113,7 @@ function processo($array){
             echo "<br><p style='color:blue;'>-> <strong>$referencia</strong></p>";
             // echo "<p><strong>Busca: </strong>$idBuscaComissao (id_busca) - <strong>$nomeContrato</strong> (Nome Contrato) - $contrato (Numero da apolice)</p>";
             echo "<p><strong>Parcela: </strong>".$parcela."</p>";
-            echo "<p><strong>Data Pagamento extraido: </strong>".$data."</p>";
+            echo "<p><strong>Data Pagamento extraido: </strong>".$dataPagamento."</p>";
             echo "<p><strong>Comissão: </strong>R$ ".$valor_calc."</p>";
             echo "<p><strong>Porcentagem: </strong>".$porcentagem."%</p>";
         }
@@ -202,27 +161,18 @@ function processo($array){
 
 
         if ($idOperadora > 0){
-
-            for($j = 0 ; $j <= sizeof($tblContas); $j++){
-                $contasRow = $tblContas[$j];
-                if ($idOperadora == 8){
-                    $operadora = 'NEXT';
-                }
-                if( $operadora == $contasRow['titulo']){
-                    $idOrigem = $contasRow['id'];
-                    if ($log){
-                        echo "<p> <strong>id_conta: </strong>".$idOrigem."</p>";
+            
+            if ($idOperadora == 2){
+                for($j = 0 ; $j <= sizeof($tblContas); $j++){
+                    $contasRow = $tblContas[$j];
+                    
+                    if( $referencia == $contasRow['titulo']){
+                        $idOrigem = $contasRow['id'];
+                        if ($log){
+                            echo "<p> <strong>id_conta: </strong>".$idOrigem."</p>";
+                        }
+                        break;
                     }
-                    break;
-                }
-                
-                # Pesquida para encontrar as contas da AFFINITY
-                if( $contaOrigemNome == $contasRow['titulo']){
-                    $idOrigem = $contasRow['id'];
-                    if ($log){
-                        echo "<p> <strong>id_conta: </strong>".$idOrigem."</p>";
-                    }
-                    break;
                 }
             }
 
@@ -234,7 +184,6 @@ function processo($array){
                     $contrato = $res['n_apolice'];
                     $operadoraFinalizado = $res['id_operadora'];
                     $nomeContrato = $res['razao_social'];
-                    $valorBrutoComissao = $res['valor'];
 
                     if ($operadoraFinalizado == 5){
                         $idOrigem = 22;
@@ -247,7 +196,6 @@ function processo($array){
                         $idFinalizado = $res['id'];
                         $portabilidade = $res['portabilidade'];
                         $nomeContrato = $res['razao_social'];
-                        $valorBrutoComissao = $res['valor'];
                     }else{
                         $buscaRazaoSocialArray = array();
                         if($idOperadora == 2){
@@ -269,7 +217,6 @@ function processo($array){
                             if($row['razao_social'] != "" && $row['razao_social'] != null){
                                 $idFinalizado = intval($row['id']);
                                 $nomeContrato = $row['razao_social'];
-                                $valorBrutoComissao = $row['valor'];
                             }else{
                                 array_push($comissoesNaoEncontradas, $comissaoRow);
                             }
@@ -286,7 +233,7 @@ function processo($array){
             }
             if ($log){
                 // echo "<p style='background: yellow;'><strong>Razao Social: </strong>".$nomeContrato."</p>";
-                echo "<p><strong>Busca: </strong>$idBuscaComissao (id_busca) - <strong style='background: yellow;'>$nomeContrato</strong> (Nome Contrato) - $contrato (Numero da apolice)</p>";
+                echo "<p><strong>Busca: </strong> (id_busca) - <strong style='background: yellow;'>$nomeContrato</strong> (Nome Contrato) - $contrato (Numero da apolice)</p>";
             }
             
 
@@ -353,9 +300,12 @@ function processo($array){
                 }
                 
                 // Regra para Pagar o valor bruto se a operadora for notredame
-                if ($idOperadora == 1 && $parcela < 4){
-                    $valor_calc = $valorBrutoComissao;
-                    echo "<p><strong>Valor Bruto Comissao: </strong>R$ ".$valor_calc."</p>";
+                if ($idOperadora == 1 && $parcela == 1 && $porcentagem == 100){
+                    if($log){
+                        echo "<p><strong>Valor Base Comissao: </strong>R$ ".$baseComissao." || ".$valor_calc."</p>";
+                        echo "<h5>".($baseComissao-$valor_calc)."</h5>";
+                    }
+                    $valor_calc = $baseComissao;
                 }
 
 
@@ -365,7 +315,6 @@ function processo($array){
                     'id_origem' => $idOrigem,
                     'id_destino' => $idDestino,
                     'descricao' => $nomeContrato,
-                    'data' => $data,
                     'txt_parcela' => $parcela,
                     'portabilidade' => $portabilidade,
                     'n_apolice' => $contrato,
@@ -379,16 +328,7 @@ function processo($array){
                 ];
                 
 
-
-                // if($idFinalizado > 0 && $refComissaoPendente){
-                //     array_push($comissoesEncontradas, $dadosComissao);
-                // }else{
-
                 $ref = false;
-
-                $valor = (float) 0.0;
-
-                // echo "<h1>".sizeof($trasacoes)."</h1>";
 
                 if (sizeof($trasacoes) > 0){
                     $refTransacao = false;
@@ -416,11 +356,6 @@ function processo($array){
                 }
                 
 
-                
-                // if(strval($valor) == strval($valor_calc)){
-                //     $ref = false;
-                // }
-
                 if ($ref){
                     array_push($comissoesPagas, $dadosComissao);
                     if ($log){
@@ -432,7 +367,6 @@ function processo($array){
                         echo "<h5><strong style='color:red;'>=> Falta pagar a ultima parcela lançada pela operadora: ".$parcela." </strong></h5>";
                     }
                 }
-                // }
 
             }else{
                 array_push($comissoesNaoEncontradas, $comissaoRow);
@@ -458,17 +392,6 @@ function processo($array){
     </script>";
 
 
-
-    
-    // $comissoesPagarAParte = array();
-    // foreach($comissoes as $comissao){
-    //     if ($comissao['porcentagem'] < 50 && $comissao['parcela'] < 4){
-    //         array_push($comissoesPagarAParte, $comissao);
-    //     }else{
-    //         array_push($comissaoNew, $comissao);
-    //     }
-    // }
-
     # Finalizar o lançamento das comissoes
     $comissoesPagarAParte = array();
     $comissoesNegativas = array();
@@ -481,7 +404,7 @@ function processo($array){
                 array_push($comissoesNegativas, $comissao);
             }else{
                 # COLOCAR A PARTE AS COMISSOES QUE TEM INCLUSAO
-                if ($comissao['porcentagem'] < 50 && $comissao['parcela'] < 4){
+                if ($comissao['porcentagem'] < 20 && $comissao['parcela'] < 4){
                     // echo "<p>Pagar a parte ".$comissao['razao_social']."</p>";
                     array_push($comissoesPagarAParte, $comissao);
                     lancaComissaoVitaliciaSemDistribuicao($comissao);
@@ -503,7 +426,7 @@ function processo($array){
     return [$comissoesEncontradas, $comissoesPagas, $comissoesNaoEncontradas, $comissoesNegativas];
 
 }
-// processo($comissoes);
+// processo($tblComissoes, false);
 
 
 function procuraPeloNumeroContratoAtual( $numeroContrato, $idOperadora){
@@ -516,7 +439,9 @@ function procuraPeloNumeroContratoAtual( $numeroContrato, $idOperadora){
             $finalizadoRow = $tblFinalizado[$i];
             // echo "<p>".$numeroContratoSplit[0]."</p>";
             // echo " ".$finalizadoRow['n_apolice'];
-            if( $numeroContratoSplit[0] == $finalizadoRow['n_apolice'] || $numeroContrato == $finalizadoRow['n_apolice']){
+            if( $numeroContratoSplit[0] == $finalizadoRow['n_apolice'] || 
+                $numeroContrato == $finalizadoRow['n_apolice'] || 
+                $numeroContrato == $finalizadoRow['contrato_dental']){
                 if ($idOperadora == 2){
                     return $finalizadoRow;
                 }
@@ -554,4 +479,3 @@ function procuraPelaRazaoSocial( $nomeContrato, $idOperadora){
     return false;
 }
 
-// mysqli_close($conect);

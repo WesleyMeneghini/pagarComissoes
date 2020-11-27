@@ -2,6 +2,7 @@
 
 require_once "comissoes.php";
 
+
 $comissoesEncontradas = array();
 $comissoesPagas = array();
 $comissoesNaoEncontradas = array();
@@ -9,23 +10,39 @@ $comissoesNegativas = array();
 
 $comissoesEncontradasString = "";
 
+$parcelasFaltando = array();
+
+$salvarSistema = "";
+$salvar = false;
+if (isset($_GET['salva_banco'])) {
+    $salvarSistema = "checked='checked'";
+    $salvar = true;
+}
+
 if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
+
+
     $idOperadora = $_GET['operadora'];
     $dataInicial = $_GET['data_inicial'];
     $dataFinal = $_GET['data_final'];
+
+    $buscaOperadoras = "";
     if ($idOperadora == "" || $idOperadora == null || $idOperadora == 0) {
-        $sql = "select * FROM busca_comissoes where  data_inicial >= '$dataInicial';";
+        $buscaOperadoras = "> '0'";
     } else {
-        $sql = "select * FROM busca_comissoes where id_operadora = '$idOperadora' and data_inicial >= '$dataInicial' and data_final <= '$dataFinal';";
+        $buscaOperadoras = "= '$idOperadora'";
     }
 
-    // echo $sql;
+    $sql = "SELECT data_inicial, data_final, nome_contrato, data_pagamento, sum(comissao) as comissao, parcela, porcentagem, contrato_atual, id_operadora, id_conta, dental, referencia, contrato_atual, proposta  
+    from busca_comissoes where id_operadora $buscaOperadoras and (data_pagamento >= '$dataInicial' and data_pagamento <= '$dataInicial' or data_inicial >= '$dataInicial' and data_final <= '$dataFinal')  
+    group by nome_contrato, contrato_atual, porcentagem, data_pagamento, referencia, proposta, parcela, id_operadora, id_conta, dental, data_inicial, data_final order by data_pagamento, parcela;";    
+
     $select_comissoes = mysqli_query($conect, $sql);
     while ($rs_comissoes = mysqli_fetch_array($select_comissoes)) {
         array_push($tblComissoes, $rs_comissoes);
     }
-    $comissoes = agruparComissoes($tblComissoes);
-    $comissoesProcessadas = processo($comissoes);
+    // $comissoes = agruparComissoes($tblComissoes);
+    $comissoesProcessadas = processo($tblComissoes, $salvar);
 
     $count = 0;
 
@@ -49,18 +66,16 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
             $operadora = $comissao['operadora'];
             // $comissoesEncontradasString .= "<h5>$operadora</h5>";
         }
-        if ($dataPagamento != "" && $dataPagamento != null){
-            $dataPagamento = date('d/m/y', strtotime($comissao['data_pagamento']));
+        if ($dataPagamento != "" && $dataPagamento != null) {
+            $dataPagamento = date('d/m/y', strtotime($dataPagamento));
+        } else {
+            $dataPagamento = "";
         }
 
-        $parcelasNaoPagas = "";
-        foreach ($comissao['parcelasNaoPagas'] as $parc) {
-            if ($parcelasNaoPagas == "") {
-                $parcelasNaoPagas .= "<li><strong class='red-text'>Parcelas não lançadas: </strong>";
-            }
-            $parcelasNaoPagas .= $parc . ", ";
+        if (sizeof($comissao['parcelasNaoPagas'])) {
+            array_push($parcelasFaltando, $comissao);
         }
-        $parcelasNaoPagas .= "</li>";
+
 
         $comissoesEncontradasString .= '
             <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
@@ -74,7 +89,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
                         <li><strong>Valor: </strong> R$ ' . number_format($comissao['valor_calc'], 2, ',', '.') . '</li>
                         <li><strong>Porcentagem: </strong> ' . $comissao['porcentagem'] . '%</li>
                         <li><strong>Parcela: </strong> ' . $parcela . '</li>
-                        ' . $parcelasNaoPagas . '
+                        
                         <li><strong>Data de Pagamento: </strong> ' .  $dataPagamento . '</li>
                         <li><strong>ID Finalizado: </strong> ' .  $comissao['txt_id_finalizado'] . '</li>
                     </ul>
@@ -94,6 +109,10 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
         $dataPagamento = $comissao['dataPagamento'];
         if ($parcela < 10) {
             $parcela = "0" . $parcela;
+        }
+
+        if (sizeof($comissao['parcelasNaoPagas'])) {
+            array_push($parcelasFaltando, $comissao);
         }
 
         if ($operadora == "" || $operadora != $comissao['operadora']) {
@@ -133,11 +152,11 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
         if ($parcela < 10) {
             $parcela = "0" . $parcela;
         }
-        if($comissao['referencia'] == 'AMIL'){
+        if ($comissao['referencia'] == 'AMIL') {
             $comissao['contrato_atual'] = $comissao['proposta'];
         }
 
-        if ($dataPagamento != "" && $dataPagamento != null){
+        if ($dataPagamento != "" && $dataPagamento != null) {
             $dataPagamento = date('d/m/y', strtotime($comissao['data_pagamento']));
         }
 
@@ -199,44 +218,52 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
             </li>';
     }
     $comissoesNegativasString .= '</ul></div>';
-    // Comissoes já pagas
 
 
-    // $comissoesEncontradasString = "";
 
 
-    // echo '
-    //     <div id="swipe-2" class="col s12 " style="height: auto;">
-    //         <ul class="collapsible popout expandable">';
 
-    // foreach ($comissoesProcessadas[1] as $comissao) {
-    //     // echo "<p>".json_encode($comissao)."</p>";
-    //     if ($operadora == "" || $operadora != $comissao['operadora']) {
-    //         $operadora = $comissao['operadora'];
-    //         echo "<h5>" . $comissao['operadora'] . "</h5>";
-    //     }
+    $parcelasFaltandoString = '<div id="test5" class="col s12"><ul class="collapsible popout expandable">';
 
-    //     echo '
+    $operadora = "";
+    foreach ($parcelasFaltando as $comissao) {
+        $parcela = $comissao['txt_parcela'];
+        $dataPagamento = $comissao['dataPagamento'];
+        if ($parcela < 10) {
+            $parcela = "0" . $parcela;
+        }
 
-    //             <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
-    //                 <div class="collapsible-header">
-    //                 ' . $comissao['descricao'] . '
-    //                 <span class="new badge"></span>
-    //                 </div>
-    //                 <div class="collapsible-body">
-    //                     <ul>
-    //                         <li><strong>Numero Apólice: </strong> ' . $comissao['n_apolice'] . '</li>
-    //                         <li><strong>Porcentagem: </strong> ' . $comissao['porcentagem'] . '%</li>
-    //                         <li><strong>Parcela: </strong> ' . $comissao['txt_parcela'] . '</li>
-    //                         <li><strong>Valor: </strong> R$ ' . number_format($comissao['valor_calc'], 2, ',', '.') . '</li>
-    //                         <li><strong>ID Finalizado: </strong> ' .  $comissao['txt_id_finalizado'] . '</li>
-    //                     </ul>
-    //                 </div>
-    //             </li>';
-    // }
-    // echo '
-    //         </ul>
-    //     </div>';
+
+        $parcelasNaoPagas = "";
+        foreach ($comissao['parcelasNaoPagas'] as $parc) {
+            if ($parcelasNaoPagas == "") {
+                $parcelasNaoPagas .= "<li><strong class='red-text'>Parcelas não lançadas: </strong>";
+            }
+            $parcelasNaoPagas .= $parc . ", ";
+        }
+        $parcelasNaoPagas .= "</li>";
+
+        if ($operadora == "" || $operadora != $comissao['operadora']) {
+            $operadora = $comissao['operadora'];
+            // $comissoesEncontradasString .= "<h5>$operadora</h5>";
+        }
+
+        $parcelasFaltandoString .= '
+            <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
+                <div class="collapsible-header">
+                ' . $operadora . ' - ' . $comissao['descricao'] . '
+                <span class="new badge"></span>
+                </div>
+                <div class="collapsible-body">
+                    <ul>
+                        <li><strong>Numero Apólice: </strong> ' . $comissao['n_apolice'] . '</li>
+                        ' . $parcelasNaoPagas . '
+                        <li><strong>ID Finalizado: </strong> ' .  $comissao['txt_id_finalizado'] . '</li>
+                    </ul>
+                </div>
+            </li>';
+    }
+    $parcelasFaltandoString .= '</ul></div>';
 }
 
 ?>
@@ -257,48 +284,14 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Comissoes</title>
 
-    <!-- Colocar efeito de abrir e fechar para obter mais informaçoes -->
-    <!-- <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var elem = document.querySelector('.collapsible.expandable');
-            var instance = M.Collapsible.init(elem, {
-                accordion: false
-            });
-        });
-
-        $(document).ready(function() {
-            $('.collapsible.expandable').collapsible({accordion: false});
-        });
-    </script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var elems = document.querySelectorAll('.sidenav');
-            var instances = M.Sidenav.init(elems, options);
-        });
-
-        // Or with jQuery
-
-        // $(document).ready(function() {
-        //     $('.sidenav').sidenav();
-        // });
-    </script> -->
-
-
-
     <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 
     <script>
-        // Efeito para trocar o conteudo das divs
-        // $('ul.tabs').tabs({
-        //     swipeable: true,
-        //     responsiveThreshold: Infinity
-        // });
         $(document).ready(function() {
             $('.tabs').tabs();
         });
-
 
 
         // Efeito para abrir e fechar as informaçoes do lançamento das comissoes
@@ -313,6 +306,8 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
             width: 100%;
         }
     </style>
+
+
 </head>
 
 <body>
@@ -338,7 +333,6 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
 
                         ?>
                     </select>
-                    <!-- <label>Operadoras</label> -->
 
                 </div>
                 <div class="input-field col s3 ">
@@ -358,14 +352,15 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
                         $dataFinal = $_GET['data_final'];
                         echo "<input type='date' id='data_final' name='data_final' value='$dataFinal' />";
                     } else {
-                        echo '<input type="date" id="data_final" name="data_final" />';
+                        // echo '<input type="date" id="data_final" name="data_final" value="' . date("Y-m-d") . '" />';
+                        echo '<input type="date" id="data_final" name="data_final" value="" />';
                     }
                     ?>
                     <label for="data_final">Data Final</label>
                 </div>
                 <p>
                     <label>
-                        <input type="checkbox" class="filled-in" />
+                        <input type="checkbox" class="filled-in" id="ck_salvar" name="salva_banco" <?= $salvarSistema ?> onclick="verificarCheckBox();" />
                         <span>Salvar no Sistema</span>
                     </label>
                 </p>
@@ -373,9 +368,9 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
             </div>
             <div class="row">
                 <div class="input-field col s6 ">
-                    <button class="btn waves-effect waves-light" type="submit" name="action" value="PESQUISAR">
+                    <button class="btn waves-effect waves-light" id="btn_pesquisa" type="submit" name="action" value="PESQUISAR">
                         PESQUISAR
-                        <i class="material-icons right">send</i>
+                        <i class="material-icons right">search</i>
                     </button>
                     <button id="btn_limpar" class="btn waves-effect waves-light red darken-1" type="button">
                         LIMPAR
@@ -383,8 +378,23 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
                     </button>
                     <script>
                         const $btnLimpar = document.getElementById("btn_limpar");
+                        var $btnPesquisa = document.getElementById("btn_pesquisa");
+
                         const redirecionar = () => window.location.href = "front.php";
                         $btnLimpar.addEventListener('click', () => redirecionar());
+
+                        function verificarCheckBox() {
+                            var $ckSalvar = document.getElementById("ck_salvar");
+
+                            if ($ckSalvar.checked == true) {
+                                console.log("true")
+                                console.log($btnPesquisa)
+                                $btnPesquisa.innerHTML = 'Salvar <i class="material-icons right">save</i>';
+                            } else {
+                                console.log("false")
+                                $btnPesquisa.innerHTML = 'Pesquisar <i class="material-icons right">search</i>';
+                            }
+                        }
                     </script>
                 </div>
 
@@ -394,19 +404,101 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
 
     </div>
     <div class="container">
+
+        <div class="progress">
+            <div class="indeterminate"></div>
+        </div>
+
+        <!-- Relatório -->
+        <div class="row">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Quantidade</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>Há serem Lançadas</td>
+                        <td>(<?= sizeof($comissoesEncontradas) ?>)</td>
+                        <td>
+                            <?php
+                            $comissaoTotalEncontradas = 0.0;
+                            foreach ($comissoesEncontradas as $comissao) {
+                                $comissaoTotalEncontradas += $comissao['valor_calc'];
+                            }
+                            echo "R$ " . number_format($comissaoTotalEncontradas, 2, ',', '.');
+                            ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Lançadas</td>
+                        <td>(<?= sizeof($comissoesPagas) ?>)</td>
+                        <td>
+                            <?php
+                            $comissaoTotalPagas = 0.0;
+                            foreach ($comissoesPagas as $comissao) {
+                                $comissaoTotalPagas += $comissao['valor_calc'];
+                            }
+                            echo "R$ " . number_format($comissaoTotalPagas, 2, ',', '.');
+                            ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Não Encontradas</td>
+                        <td>(<?= sizeof($comissoesNaoEncontradas) ?>)</td>
+                        <td>
+                            <?php
+                            $comissaoTotalNaoEncontradas = 0.0;
+                            foreach ($comissoesNaoEncontradas as $comissao) {
+                                $comissaoTotalNaoEncontradas += $comissao['comissao'];
+                            }
+                            echo "R$ " . number_format($comissaoTotalNaoEncontradas, 2, ',', '.');
+                            ?>
+                        </td>
+                    </tr>
+                    <tr class="blue darken-1 white-text">
+                        <td><strong>Total</strong></td>
+                        <td>
+                            <strong>
+                                (<?= sizeof($comissoesNaoEncontradas) + sizeof($comissoesPagas) + sizeof($comissoesEncontradas) ?>)
+                            </strong>
+                        </td>
+                        <td>
+                            <strong>
+                                <?php
+                                $comissaoTotalNaoEncontradas = 0.0;
+                                foreach ($comissoesNaoEncontradas as $comissao) {
+                                    $comissaoTotalNaoEncontradas += $comissao['comissao'];
+                                }
+                                echo "R$ " . number_format($comissaoTotalEncontradas + $comissaoTotalPagas + $comissaoTotalNaoEncontradas, 2, ',', '.');
+                                ?>
+                            </strong>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
         <div class="row">
             <ul class="tabs tabs-fixed-width tab-demo z-depth-1">
                 <?php if (sizeof($comissoesEncontradas) > 0) { ?>
-                    <li class="tab"><a class="active" href="#test1">Encontradas (<?= sizeof($comissoesEncontradas); ?>)</a></li>
+                    <li class="tab"><a class="active" href="#test1">Há serem Lançadas (<?= sizeof($comissoesEncontradas); ?>)</a></li>
                 <?php } ?>
                 <?php if (sizeof($comissoesPagas) > 0) { ?>
-                    <li class="tab"><a href="#test2">Pagas (<?= sizeof($comissoesPagas); ?>)</a></li>
+                    <li class="tab"><a href="#test2">Lançadas (<?= sizeof($comissoesPagas); ?>)</a></li>
                 <?php } ?>
-                <?php if (sizeof($comissoesEncontradas) > 0) { ?>
+                <?php if (sizeof($comissoesNaoEncontradas) > 0) { ?>
                     <li class="tab"><a href="#test3">Nao encontradas (<?= sizeof($comissoesNaoEncontradas); ?>)</a></li>
                 <?php } ?>
                 <?php if (sizeof($comissoesNegativas) > 0) { ?>
                     <li class="tab"><a href="#test4">Negativas (<?= sizeof($comissoesNegativas); ?>)</a></li>
+                <?php } ?>
+                <?php if (sizeof($parcelasFaltando) > 0) { ?>
+                    <li class="tab"><a href="#test5">Parcelas Faltando (<?= sizeof($parcelasFaltando); ?>)</a></li>
                 <?php } ?>
             </ul>
             <div id="test1" class="col s12">
@@ -421,111 +513,28 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
             <div id="test4" class="col s12">
                 <?= $comissoesNegativasString; ?>
             </div>
+            <div id="test5" class="col s12">
+                <?= $parcelasFaltandoString; ?>
+            </div>
         </div>
-
-
-        <?php
-        // if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
-        //     $idOperadora = $_GET['operadora'];
-        //     $dataInicial = $_GET['data_inicial'];
-        //     if ($idOperadora == "" || $idOperadora == null || $idOperadora == 0) {
-        //         $sql = "select * FROM busca_comissoes where  data_inicial >= '$dataInicial';";
-        //     } else {
-        //         $sql = "select * FROM busca_comissoes where id_operadora = '$idOperadora' and data_inicial >= '$dataInicial';";
-        //     }
-
-        //     // echo $sql;
-        //     $select_comissoes = mysqli_query($conect, $sql);
-        //     while ($rs_comissoes = mysqli_fetch_array($select_comissoes)) {
-        //         array_push($tblComissoes, $rs_comissoes);
-        //     }
-        //     $comissoes = agruparComissoes($tblComissoes);
-        //     $comissoesProcessadas = processo($comissoes);
-
-        //     $count = 0;
-
-
-
-        //     echo '
-        //     <ul class="tabs tabs-fixed-width tab-demo z-depth-1">
-        //         <li class="tab"><a class="active" href="#swipe-1">Encontradas (' . sizeof($comissoesProcessadas[0]) . ')</a></li>
-        //         <li class="tab"><a href="#swipe-2">Pagas (' . sizeof($comissoesProcessadas[1]) . ')</a></li>
-        //         <li class="tab"><a href="#swipe-3">Test 3</a></li>
-        //     </ul>';
-
-
-        //     // Comissoes a serem lançadas
-        //     echo '
-        //     <div id="swipe-1" class="col s12 " style="height: auto;">
-        //         <ul class="collapsible popout expandable">';
-
-        //     $operadora = "";
-        //     foreach ($comissoesProcessadas[0] as $comissao) {
-        //         // echo "<p>".json_encode($comissao)."</p>";
-        //         if ($operadora == "" || $operadora != $comissao['operadora']) {
-        //             $operadora = $comissao['operadora'];
-        //             echo "<h5>" . $comissao['operadora'] . "</h5>";
-        //         }
-
-        //         echo '
-
-        //                 <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
-        //                     <div class="collapsible-header">
-        //                     ' . $comissao['descricao'] . '
-        //                     <span class="new badge"></span>
-        //                     </div>
-        //                     <div class="collapsible-body">
-        //                         <ul>
-        //                             <li><strong>Numero Apólice: </strong> ' . $comissao['n_apolice'] . '</li>
-        //                             <li><strong>Porcentagem: </strong> ' . $comissao['porcentagem'] . '%</li>
-        //                             <li><strong>Parcela: </strong> ' . $comissao['txt_parcela'] . '</li>
-        //                             <li><strong>Valor: </strong> R$ ' . number_format($comissao['valor_calc'], 2, ',', '.') . '</li>
-        //                             <li><strong>ID Finalizado: </strong> ' .  $comissao['txt_id_finalizado'] . '</li>
-        //                         </ul>
-        //                     </div>
-        //                 </li>';
-        //     }
-        //     echo '
-        //             </ul>
-        //         </div>';
-
-        //     // Comissoes já pagas
-        //     echo '
-        //         <div id="swipe-2" class="col s12 " style="height: auto;">
-        //             <ul class="collapsible popout expandable">';
-
-        //     foreach ($comissoesProcessadas[1] as $comissao) {
-        //         // echo "<p>".json_encode($comissao)."</p>";
-        //         if ($operadora == "" || $operadora != $comissao['operadora']) {
-        //             $operadora = $comissao['operadora'];
-        //             echo "<h5>" . $comissao['operadora'] . "</h5>";
-        //         }
-
-        //         echo '
-
-        //                 <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
-        //                     <div class="collapsible-header">
-        //                     ' . $comissao['descricao'] . '
-        //                     <span class="new badge"></span>
-        //                     </div>
-        //                     <div class="collapsible-body">
-        //                         <ul>
-        //                             <li><strong>Numero Apólice: </strong> ' . $comissao['n_apolice'] . '</li>
-        //                             <li><strong>Porcentagem: </strong> ' . $comissao['porcentagem'] . '%</li>
-        //                             <li><strong>Parcela: </strong> ' . $comissao['txt_parcela'] . '</li>
-        //                             <li><strong>Valor: </strong> R$ ' . number_format($comissao['valor_calc'], 2, ',', '.') . '</li>
-        //                             <li><strong>ID Finalizado: </strong> ' .  $comissao['txt_id_finalizado'] . '</li>
-        //                         </ul>
-        //                     </div>
-        //                 </li>';
-        //     }
-        //     echo '
-        //             </ul>
-        //         </div>';
-        // }
-        ?>
-
     </div>
+
+    <!-- Efeito do load -->
+    <script>
+        //código usando jQuery
+        $(document).ready(function() {
+            $('.progress').hide();
+        });
+        $('#btn_pesquisa').click(function() {
+            if ($('#data_inicial').val() != "") {
+                $('.progress').show();
+            }
+        });
+    </script>
 </body>
 
 </html>
+
+<?php
+    mysqli_close($conect);
+?>
