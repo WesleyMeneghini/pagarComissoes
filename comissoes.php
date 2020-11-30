@@ -11,31 +11,32 @@ $tblFinalizado = array();
 $tblComissoes = array();
 $tblContas = array();
 
-# SELECIONAR AS COMISSOES QUE SERAO PROCESSADAS
-// $sql = "select data_inicial, data_final, nome_contrato, data_pagamento, sum(comissao) as comissao, parcela, porcentagem, contrato_atual, id_operadora, id_conta, dental, referencia, contrato_atual, proposta  from busca_comissoes 
-// where id_operadora = 3 and (data_pagamento >= '2020-11-16' and data_pagamento <= '2020-11-22' or data_inicial >= '2020-11-16' and data_final <= '2020-11-22')  
-// group by nome_contrato, contrato_atual, porcentagem, data_pagamento, referencia, proposta, parcela, id_operadora, id_conta, dental, data_inicial, data_final order by data_pagamento, parcela;
-// ";
-
 // // $sql = "select * FROM busca_comissoes where id = 9764;";
 
+
+# SELECIONAR AS COMISSOES QUE SERAO PROCESSADAS
+// $sql = "select * from busca_comissoes where id_operadora = 4 and ((data_pagamento >= '2020-11-16' and data_pagamento <= '2020-11-22') or (data_inicial >= '2020-11-16' and data_final <= '2020-11-22'));";
+
+
 // $select_comissoes = mysqli_query($conect, $sql);
-// while ($rs_comissoes = mysqli_fetch_array($select_comissoes)){
+// // var_dump(mysqli_fetch_assoc($select_comissoes));
+// while ($rs_comissoes = mysqli_fetch_assoc($select_comissoes)){
 //     array_push($tblComissoes, $rs_comissoes);
 // }
 // $comissoes = agruparComissoes($tblComissoes);
 
 $sql = "SELECT * FROM tbl_contas;";
 $select_contas = mysqli_query($conect, $sql);
-while ($rs_conta = mysqli_fetch_array($select_contas)){
+while ($rs_conta = mysqli_fetch_assoc($select_contas)){
     array_push($tblContas, $rs_conta);
 }
 
-$sql = "SELECT * FROM tbl_finalizado;";
+$sql = "SELECT id, id_operadora, razao_social, n_apolice, contrato_dental  FROM tbl_finalizado;";
 $select_finalizado = mysqli_query($conect, $sql);
-while ($rs_finalizado = mysqli_fetch_array($select_finalizado)){
+while ($rs_finalizado = mysqli_fetch_assoc($select_finalizado)){
     array_push($tblFinalizado, $rs_finalizado);
 }
+// echo sizeof($tblFinalizado)."-----------------------";
 
 function processo($array, $salvarSistema){
     $salvar = $salvarSistema;
@@ -51,7 +52,7 @@ function processo($array, $salvarSistema){
     $comissoesPagas = array();
     $comissoesNaoEncontradas = array();
 
-    for($i = 0 ; $i <= sizeof($comissoes)-1; $i++){
+    for($i = 0 ; $i < sizeof($comissoes); $i++){
 
         $idFinalizado = 0;
         $idDestino = 1;
@@ -60,8 +61,10 @@ function processo($array, $salvarSistema){
 
         $comissaoRow = $comissoes[$i];
 
-        // echo json_encode($comissaoRow);
+        // echo "<p>".json_encode($comissaoRow)."</p>";
         
+        $idBuscaComissao = $comissaoRow['id'];
+
         $referencia = (string) strtoupper($comissaoRow['referencia']);
         $nomeContrato = $comissaoRow['nome_contrato'];
         $contrato = $comissaoRow['contrato_atual'];
@@ -75,13 +78,8 @@ function processo($array, $salvarSistema){
         $idOrigem = $comissaoRow['id_conta'];
         $refDental = $comissaoRow['dental'];
         $valorBrutoComissao = $comissaoRow['base_comissao'];
-
-
-
-        if ($parcela > 3){
-            $idTransacao = 7;
-        }
-        
+        $statusComissao = $comissaoRow['paga'];
+        // $idFinalizado = $comissaoRow['id_finalizado'];
 
         $ref_arr = explode(" ", $referencia);
         switch(strtoupper($ref_arr[0])){
@@ -99,6 +97,9 @@ function processo($array, $salvarSistema){
             case "NEXT":
                 $contrato = $proposta;
                 break;
+            case "SULAMERICA":
+                $contrato = $proposta;
+                break;
             // case "BRADESCO-DENTAL":
             //     $contrato = $contrato - 1;
             //     break;
@@ -111,7 +112,7 @@ function processo($array, $salvarSistema){
 
             // echo "<br><p style='color:blue;'>-> <strong>$operadora</strong></p>";
             echo "<br><p style='color:blue;'>-> <strong>$referencia</strong></p>";
-            // echo "<p><strong>Busca: </strong>$idBuscaComissao (id_busca) - <strong>$nomeContrato</strong> (Nome Contrato) - $contrato (Numero da apolice)</p>";
+            echo "<p><strong>Busca: </strong> (id_busca) - <strong>$nomeContrato</strong> (Nome Contrato) - $contrato (Numero da apolice)</p>";
             echo "<p><strong>Parcela: </strong>".$parcela."</p>";
             echo "<p><strong>Data Pagamento extraido: </strong>".$dataPagamento."</p>";
             echo "<p><strong>Comissão: </strong>R$ ".$valor_calc."</p>";
@@ -129,7 +130,7 @@ function processo($array, $salvarSistema){
         // echo $sql;
         $select = mysqli_query($conect, $sql);
         $porcentagemComissoes = array();
-        while ($rs_porcentagem = mysqli_fetch_array($select)){
+        while ($rs_porcentagem = mysqli_fetch_assoc($select)){
             array_push($porcentagemComissoes, $rs_porcentagem);
             
         }
@@ -160,8 +161,12 @@ function processo($array, $salvarSistema){
         }
 
 
+        
+
+
         if ($idOperadora > 0){
             
+            # Identificar a Conta de Origem 
             if ($idOperadora == 2){
                 for($j = 0 ; $j <= sizeof($tblContas); $j++){
                     $contasRow = $tblContas[$j];
@@ -208,7 +213,7 @@ function processo($array, $salvarSistema){
                         }
                         // echo "<p>$sql</p>";
                         $buscaRazaoSocial = mysqli_query($conect, $sql);
-                        while ($rs_busca = mysqli_fetch_array($buscaRazaoSocial)){
+                        while ($rs_busca = mysqli_fetch_assoc($buscaRazaoSocial)){
                             array_push($buscaRazaoSocialArray, $rs_busca);
                         }
 
@@ -221,6 +226,8 @@ function processo($array, $salvarSistema){
                                 array_push($comissoesNaoEncontradas, $comissaoRow);
                             }
                             
+                        }else{
+                            // echo "Mais de um contrato encontrado";
                         }
 
                         
@@ -239,8 +246,29 @@ function processo($array, $salvarSistema){
 
             if ($idFinalizado > 0){
                 if ($log){
-                echo "<h5> ID: <strong style='color:green;'>ID FINALIZADO: $idFinalizado </strong> encontrou</h5>";
+                // echo "<h5> ID: <strong style='color:green;'>ID FINALIZADO: $idFinalizado </strong> encontrou</h5>";
                 }
+
+
+                // Varificando as parcelas da Sulamerica
+                // echo "<h5> ID: <strong style='color:red;'>$parcela</h5>";
+                if ($idOperadora == 4 && $parcela >= 1 && $referencia == 'SULAMERICA'){
+                    $sql = "SELECT max(parcela) as ultima_parcela from tbl_transacoes where id_origem = $idOrigem and id_finalizado = $idFinalizado;";
+                    $buscaUltimaParcela = mysqli_query($conect, $sql);
+                    while ($rs_busca = mysqli_fetch_assoc($buscaUltimaParcela)){
+                        // echo json_encode($rs_busca);
+                        $parcela = $rs_busca['ultima_parcela']+1;
+                    }
+                }
+
+                // echo "<h5> ID: <strong style='color:green;'>$parcela</h5><br>";
+                
+
+
+
+
+
+
 
                 $listaParcelas = array();
                 $listaParcelasBanco = array();
@@ -254,7 +282,7 @@ function processo($array, $salvarSistema){
                 
                 // echo "<p>$sql</p>";
                 $select_transacoes = mysqli_query($conect, $sql);
-                while ($rs_trasacao = mysqli_fetch_array($select_transacoes)){
+                while ($rs_trasacao = mysqli_fetch_assoc($select_transacoes)){
                     // echo "<h6> ID: <song style='color:orange;'>ID TRANSACOES: ".$rs_trasacao['id']." </strong> encontrou</h6>";
 
                     array_push($trasacoes, $rs_trasacao);
@@ -268,7 +296,7 @@ function processo($array, $salvarSistema){
                 
                     // echo "<p>$sql</p>";
                     $select_transacoes = mysqli_query($conect, $sql);
-                    while ($rs_trasacao = mysqli_fetch_array($select_transacoes)){
+                    while ($rs_trasacao = mysqli_fetch_assoc($select_transacoes)){
                         // echo "<h6> ID: <song style='color:orange;'>ID TRANSACOES: ".$rs_trasacao['id']." </strong> encontrou</h6>";
 
                         array_push($trasacoes, $rs_trasacao);
@@ -307,9 +335,14 @@ function processo($array, $salvarSistema){
                     }
                     $valor_calc = $baseComissao;
                 }
+                
 
+                if ($parcela > 3){
+                    $idTransacao = 7;
+                }
 
                 $dadosComissao = [
+                    'idBuscaComissao' => $idBuscaComissao,
                     'txt_id_finalizado' => $idFinalizado,
                     'valor_calc' => $valor_calc,
                     'id_origem' => $idOrigem,
@@ -356,7 +389,7 @@ function processo($array, $salvarSistema){
                 }
                 
 
-                if ($ref){
+                if ($ref || $statusComissao == 1){
                     array_push($comissoesPagas, $dadosComissao);
                     if ($log){
                         echo "<h5><strong style='color:#5da170;'>Já foi paga a parcela: ".$parcela." </strong></h5>";
@@ -404,7 +437,7 @@ function processo($array, $salvarSistema){
                 array_push($comissoesNegativas, $comissao);
             }else{
                 # COLOCAR A PARTE AS COMISSOES QUE TEM INCLUSAO
-                if ($comissao['porcentagem'] < 20 && $comissao['parcela'] < 4){
+                if (intval($comissao['porcentagem']) < 20 && $comissao['parcela'] < 4){
                     // echo "<p>Pagar a parte ".$comissao['razao_social']."</p>";
                     array_push($comissoesPagarAParte, $comissao);
                     lancaComissaoVitaliciaSemDistribuicao($comissao);
@@ -420,6 +453,8 @@ function processo($array, $salvarSistema){
         if ($log){
             echo "<br>$count";
         }
+    }else{
+        // echo "Nao salva no banco";
     }
 
     // echo $comissoesEncontradas;
@@ -437,11 +472,10 @@ function procuraPeloNumeroContratoAtual( $numeroContrato, $idOperadora){
         $numeroContratoSplit = explode("/", $numeroContrato);
         for($i = 0 ; $i <= sizeof($tblFinalizado); $i++){
             $finalizadoRow = $tblFinalizado[$i];
-            // echo "<p>".$numeroContratoSplit[0]."</p>";
             // echo " ".$finalizadoRow['n_apolice'];
-            if( $numeroContratoSplit[0] == $finalizadoRow['n_apolice'] || 
-                $numeroContrato == $finalizadoRow['n_apolice'] || 
-                $numeroContrato == $finalizadoRow['contrato_dental']){
+            if( strval($numeroContratoSplit[0]) == strval($finalizadoRow['n_apolice']) || 
+            strval($numeroContrato) == strval($finalizadoRow['n_apolice']) || 
+            strval($numeroContrato) == strval($finalizadoRow['contrato_dental'])){
                 if ($idOperadora == 2){
                     return $finalizadoRow;
                 }

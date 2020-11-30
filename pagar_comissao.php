@@ -5,6 +5,7 @@ require_once('includes/functions.php');
 
 function lancaComissaoVitaliciaSemDistribuicao($comissao){
     global $conect;
+    $id_busca_comissao = $comissao['idBuscaComissao'];
     $valor_calc = $comissao['valor_calc'];
     $id_origem = $comissao['id_origem'];
     $id_destino = $comissao['id_destino'];
@@ -33,12 +34,18 @@ function lancaComissaoVitaliciaSemDistribuicao($comissao){
         (data, descricao, id_origem, id_destino, valor, id_finalizado, parcela, id_transacao, dental, porcentagem, id_usuario) values
         ('$data', '$descricao', '$id_origem', '$id_destino', '$valor_calc', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', $refDental, '$porcentagem', 0);";
     // echo $insert_transacoes;
-    mysqli_query($conect, $insert_transacoes) or die(mysqli_error($conect));
+    $res = mysqli_query($conect, $insert_transacoes) or die(mysqli_error($conect));
+
+    if (($id_busca_comissao != null || $id_busca_comissao != "" ) && $res){
+        $updateStatus = "UPDATE `busca_comissoes` SET `paga`='1', `id_finalizado`='$txt_id_finalizado' WHERE `id`='$id_busca_comissao';";
+        mysqli_query($conect, $updateStatus) or die(mysqli_error($conect));
+    }
 }
 
 function pagarComissoes($comissao){
 
     global $conect;
+    $id_busca_comissao = $comissao['idBuscaComissao'];
     $valor_calc = $comissao['valor_calc'];
     $id_origem = $comissao['id_origem'];
     $id_destino = $comissao['id_destino'];
@@ -74,9 +81,15 @@ function pagarComissoes($comissao){
 
     //echo $insert_transacoes;
 
-    mysqli_query($conect, $insert_transacoes) or die(mysqli_error($conect));
+    $res = mysqli_query($conect, $insert_transacoes) or die(mysqli_error($conect));
 
     $id_bruto = mysqli_insert_id($conect);
+
+    // Atualizar o status da tabela da busca_comissoes
+    if (($id_busca_comissao != null || $id_busca_comissao != "" ) && $res){
+        $updateStatus = "UPDATE `busca_comissoes` SET `paga`='1', `id_finalizado`='$txt_id_finalizado' WHERE `id`='$id_busca_comissao';";
+        mysqli_query($conect, $updateStatus) or die(mysqli_error($conect));
+    }
 
     $sql = "SELECT * FROM tbl_finalizado where id = '$txt_id_finalizado'";
 
@@ -228,4 +241,7 @@ function pagarComissoes($comissao){
             $contador++;
         }
     }
+
+
+    
 }

@@ -27,18 +27,26 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     $dataFinal = $_GET['data_final'];
 
     $buscaOperadoras = "";
+    
     if ($idOperadora == "" || $idOperadora == null || $idOperadora == 0) {
         $buscaOperadoras = "> '0'";
     } else {
         $buscaOperadoras = "= '$idOperadora'";
     }
 
-    $sql = "SELECT data_inicial, data_final, nome_contrato, data_pagamento, sum(comissao) as comissao, parcela, porcentagem, contrato_atual, id_operadora, id_conta, dental, referencia, contrato_atual, proposta  
-    from busca_comissoes where id_operadora $buscaOperadoras and (data_pagamento >= '$dataInicial' and data_pagamento <= '$dataInicial' or data_inicial >= '$dataInicial' and data_final <= '$dataFinal')  
-    group by nome_contrato, contrato_atual, porcentagem, data_pagamento, referencia, proposta, parcela, id_operadora, id_conta, dental, data_inicial, data_final order by data_pagamento, parcela;";    
+    $sql = "SELECT data_inicial, data_final, nome_contrato, data_pagamento, sum(comissao) as comissao, parcela, porcentagem, contrato_atual, id_operadora, id_conta, dental, referencia, contrato_atual, proposta, base_comissao  
+    from busca_comissoes where id_operadora $buscaOperadoras and referencia not like 'SULAMERICA' and  ((data_pagamento >= '$dataInicial' and data_pagamento <= '$dataInicial') or (data_inicial >= '$dataInicial' and data_final <= '$dataFinal')) 
+    group by nome_contrato, contrato_atual, porcentagem, data_pagamento, referencia, proposta, parcela, id_operadora, id_conta, dental, data_inicial, data_final, base_comissao order by data_pagamento, parcela;";    
+
+    
+
+    if (intval($idOperadora) == 4) {
+        $sql = "SELECT * from busca_comissoes where id_operadora = $idOperadora and referencia like 'SULAMERICA' and ((data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal') or (data_inicial >= '$dataInicial' and data_final <= '$dataFinal'));";
+    }
+
 
     $select_comissoes = mysqli_query($conect, $sql);
-    while ($rs_comissoes = mysqli_fetch_array($select_comissoes)) {
+    while ($rs_comissoes = mysqli_fetch_assoc($select_comissoes)) {
         array_push($tblComissoes, $rs_comissoes);
     }
     // $comissoes = agruparComissoes($tblComissoes);
@@ -50,6 +58,8 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     $comissoesPagas = $comissoesProcessadas[1];
     $comissoesNaoEncontradas = $comissoesProcessadas[2];
     $comissoesNegativas = $comissoesProcessadas[3];
+
+    // echo $sql;
 
     $comissoesEncontradasString = '<div id="test1" class="col s12"><ul class="collapsible popout expandable">';
 
@@ -522,14 +532,14 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     <!-- Efeito do load -->
     <script>
         //código usando jQuery
-        $(document).ready(function() {
-            $('.progress').hide();
-        });
-        $('#btn_pesquisa').click(function() {
-            if ($('#data_inicial').val() != "") {
-                $('.progress').show();
-            }
-        });
+            $(document).ready(function() {
+                $('.progress').hide();
+            });
+            $('#btn_pesquisa').click(function() {
+                if ($('#data_inicial').val() != "") {
+                    $('.progress').show();
+                }
+            });
     </script>
 </body>
 
