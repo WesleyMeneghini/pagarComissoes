@@ -27,18 +27,18 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     $dataFinal = $_GET['data_final'];
 
     $buscaOperadoras = "";
-    
+
     if ($idOperadora == "" || $idOperadora == null || $idOperadora == 0) {
         $buscaOperadoras = "> '0'";
     } else {
         $buscaOperadoras = "= '$idOperadora'";
     }
 
-    $sql = "SELECT data_inicial, data_final, nome_contrato, data_pagamento, sum(comissao) as comissao, parcela, porcentagem, contrato_atual, id_operadora, id_conta, dental, referencia, contrato_atual, proposta, base_comissao  
-    from busca_comissoes where id_operadora $buscaOperadoras and referencia not like 'SULAMERICA' and  ((data_pagamento >= '$dataInicial' and data_pagamento <= '$dataInicial') or (data_inicial >= '$dataInicial' and data_final <= '$dataFinal')) 
-    group by nome_contrato, contrato_atual, porcentagem, data_pagamento, referencia, proposta, parcela, id_operadora, id_conta, dental, data_inicial, data_final, base_comissao order by data_pagamento, parcela;";    
+    $sql = "SELECT data_inicial, data_final, nome_contrato, data_pagamento, sum(comissao) as comissao, parcela, porcentagem, contrato_atual, id_operadora, id_conta, dental, referencia, contrato_atual, proposta, base_comissao, paga 
+    from busca_comissoes where id_operadora $buscaOperadoras and referencia not like 'SULAMERICA' and  ((data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal') or (data_inicial >= '$dataInicial' and data_final <= '$dataFinal')) 
+    group by nome_contrato, contrato_atual, porcentagem, data_pagamento, referencia, proposta, parcela, id_operadora, id_conta, dental, data_inicial, data_final, base_comissao, paga order by  parcela;";
 
-    
+
 
     if (intval($idOperadora) == 4) {
         $sql = "SELECT * from busca_comissoes where id_operadora = $idOperadora and referencia like 'SULAMERICA' and ((data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal') or (data_inicial >= '$dataInicial' and data_final <= '$dataFinal'));";
@@ -91,7 +91,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
             <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
                 <div class="collapsible-header">
                 ' . $operadora . ' - ' . $comissao['descricao'] . '
-                <span class="new badge"></span>
+                <!-- <span class="new badge"></span> -->
                 </div>
                 <div class="collapsible-body">
                     <ul>
@@ -184,6 +184,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
                 <div class="collapsible-body">
                     <ul>
                         <li><strong>Numero Apólice: </strong> ' . $comissao['contrato_atual'] . '</li>
+                        <li><strong>Proposta: </strong> ' . $comissao['proposta'] . '</li>
                         <li><strong>Porcentagem: </strong> ' . $comissao['porcentagem'] . '%</li>
                         <li><strong>Parcela: </strong>' . $comissao['parcela'] . '</li>
                         <li><strong>Valor: </strong> R$ ' . number_format($comissao['comissao'], 2, ',', '.') . '</li>
@@ -236,6 +237,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     $parcelasFaltandoString = '<div id="test5" class="col s12"><ul class="collapsible popout expandable">';
 
     $operadora = "";
+
     foreach ($parcelasFaltando as $comissao) {
         $parcela = $comissao['txt_parcela'];
         $dataPagamento = $comissao['dataPagamento'];
@@ -303,6 +305,10 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
             $('.tabs').tabs();
         });
 
+        $(document).ready(function() {
+            $('.modal').modal();
+        });
+
 
         // Efeito para abrir e fechar as informaçoes do lançamento das comissoes
         $(document).ready(function() {
@@ -321,6 +327,10 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
 </head>
 
 <body>
+    <div class="progress">
+        <div class="indeterminate"></div>
+    </div>
+    <h1>Front </h1>
     <div class="container">
 
         <form action="" method="get">
@@ -362,8 +372,8 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
                         $dataFinal = $_GET['data_final'];
                         echo "<input type='date' id='data_final' name='data_final' value='$dataFinal' />";
                     } else {
-                        // echo '<input type="date" id="data_final" name="data_final" value="' . date("Y-m-d") . '" />';
-                        echo '<input type="date" id="data_final" name="data_final" value="" />';
+                        echo '<input type="date" id="data_final" name="data_final" value="' . date("Y-m-d") . '" />';
+                        // echo '<input type="date" id="data_final" name="data_final" value="" />';
                     }
                     ?>
                     <label for="data_final">Data Final</label>
@@ -413,138 +423,220 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
 
 
     </div>
-    <div class="container">
+    <?php
+    if (
+        sizeof($comissoesEncontradas) > 0 ||
+        sizeof($comissoesPagas) > 0 ||
+        sizeof($comissoesNaoEncontradas) > 0 ||
+        sizeof($comissoesNegativas) > 0
+    ) {
+    ?>
+        <div class="container">
 
-        <div class="progress">
-            <div class="indeterminate"></div>
-        </div>
 
-        <!-- Relatório -->
-        <div class="row">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Status</th>
-                        <th>Quantidade</th>
-                        <th>Valor</th>
-                    </tr>
-                </thead>
 
-                <tbody>
-                    <tr>
-                        <td>Há serem Lançadas</td>
-                        <td>(<?= sizeof($comissoesEncontradas) ?>)</td>
-                        <td>
-                            <?php
-                            $comissaoTotalEncontradas = 0.0;
-                            foreach ($comissoesEncontradas as $comissao) {
-                                $comissaoTotalEncontradas += $comissao['valor_calc'];
-                            }
-                            echo "R$ " . number_format($comissaoTotalEncontradas, 2, ',', '.');
-                            ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Lançadas</td>
-                        <td>(<?= sizeof($comissoesPagas) ?>)</td>
-                        <td>
-                            <?php
-                            $comissaoTotalPagas = 0.0;
-                            foreach ($comissoesPagas as $comissao) {
-                                $comissaoTotalPagas += $comissao['valor_calc'];
-                            }
-                            echo "R$ " . number_format($comissaoTotalPagas, 2, ',', '.');
-                            ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Não Encontradas</td>
-                        <td>(<?= sizeof($comissoesNaoEncontradas) ?>)</td>
-                        <td>
-                            <?php
-                            $comissaoTotalNaoEncontradas = 0.0;
-                            foreach ($comissoesNaoEncontradas as $comissao) {
-                                $comissaoTotalNaoEncontradas += $comissao['comissao'];
-                            }
-                            echo "R$ " . number_format($comissaoTotalNaoEncontradas, 2, ',', '.');
-                            ?>
-                        </td>
-                    </tr>
-                    <tr class="blue darken-1 white-text">
-                        <td><strong>Total</strong></td>
-                        <td>
-                            <strong>
-                                (<?= sizeof($comissoesNaoEncontradas) + sizeof($comissoesPagas) + sizeof($comissoesEncontradas) ?>)
-                            </strong>
-                        </td>
-                        <td>
-                            <strong>
+
+
+
+
+            <!-- Relatório -->
+            <div class="row">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Quantidade</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <?php
+                        if (sizeof($comissoesEncontradas) > 0) {
+                        ?>
+                            <tr>
+                                <td>Há serem Lançadas</td>
+                                <td>(<?= sizeof($comissoesEncontradas) ?>)</td>
+                                <td>
+                                    <?php
+                                    $comissaoTotalEncontradas = 0.0;
+                                    foreach ($comissoesEncontradas as $comissao) {
+                                        $comissaoTotalEncontradas += $comissao['valor_calc'];
+                                    }
+                                    echo "R$ " . number_format($comissaoTotalEncontradas, 2, ',', '.');
+                                    ?>
+                                </td>
+                            </tr>
+                        <?php
+                        }
+                        if (sizeof($comissoesPagas) > 0) {
+                        ?>
+                            <tr>
+                                <td>Lançadas</td>
+                                <td>(<?= sizeof($comissoesPagas) ?>)</td>
+                                <td>
+                                    <?php
+                                    $comissaoTotalPagas = 0.0;
+                                    foreach ($comissoesPagas as $comissao) {
+                                        $comissaoTotalPagas += $comissao['valor_calc'];
+                                    }
+                                    echo "R$ " . number_format($comissaoTotalPagas, 2, ',', '.');
+                                    ?>
+                                </td>
+                            </tr>
+                        <?php
+                        }
+                        if (sizeof($comissoesNaoEncontradas) > 0) {
+                        ?>
+                            <tr>
+                                <td>Não Encontradas</td>
+                                <td>(<?= sizeof($comissoesNaoEncontradas) ?>)</td>
+                                <td>
+                                    <?php
+                                    $comissaoTotalNaoEncontradas = 0.0;
+                                    foreach ($comissoesNaoEncontradas as $comissao) {
+                                        $comissaoTotalNaoEncontradas += $comissao['comissao'];
+                                    }
+                                    echo "R$ " . number_format($comissaoTotalNaoEncontradas, 2, ',', '.');
+                                    ?>
+                                </td>
+                            </tr>
+                        <?php
+                        }
+                        ?>
+                        <tr class="blue darken-1 white-text">
+                            <td><strong>Total</strong></td>
+                            <td>
+                                <strong>
+                                    (<?= sizeof($comissoesNaoEncontradas) + sizeof($comissoesPagas) + sizeof($comissoesEncontradas) ?>)
+                                </strong>
+                            </td>
+                            <td>
+                                <strong>
+                                    <?php
+                                    $comissaoTotalNaoEncontradas = 0.0;
+                                    foreach ($comissoesNaoEncontradas as $comissao) {
+                                        $comissaoTotalNaoEncontradas += $comissao['comissao'];
+                                    }
+                                    echo "R$ " . number_format($comissaoTotalEncontradas + $comissaoTotalPagas + $comissaoTotalNaoEncontradas, 2, ',', '.');
+                                    ?>
+                                </strong>
+                            </td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- MOdal detalhes lançamentos -->
+            <div class="row">
+                <!-- Modal Trigger -->
+                <a class="waves-effect waves-light btn modal-trigger" href="#modal1">Detalhes Lançamentos</a>
+
+                <!-- Modal Structure -->
+                <div id="modal1" class="modal">
+                    <div class="modal-content">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data Pagamento da Nota</th>
+                                    <th>Operadora</th>
+                                    <th>Valor Soma Comissoes</th>
+                                    <th>Valor da Nota Fiscal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 <?php
-                                $comissaoTotalNaoEncontradas = 0.0;
-                                foreach ($comissoesNaoEncontradas as $comissao) {
-                                    $comissaoTotalNaoEncontradas += $comissao['comissao'];
-                                }
-                                echo "R$ " . number_format($comissaoTotalEncontradas + $comissaoTotalPagas + $comissaoTotalNaoEncontradas, 2, ',', '.');
-                                ?>
-                            </strong>
-                        </td>
-                    </tr>
+                                $sql = "SELECT data_pagamento, sum(comissao) as valor, referencia, dental FROM busca_comissoes WHERE data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal' and id_operadora $buscaOperadoras group by id_conta, data_pagamento, referencia, dental;";
 
-                </tbody>
-            </table>
+                                // echo $sql;
+                                $select = mysqli_query($conect, $sql);
+                                while ($rs = mysqli_fetch_assoc($select)) {
+                                ?>
+                                    <tr>
+                                        <td><?= date('d/m/y', strtotime($rs['data_pagamento'])) ?></td>
+                                        <td><?= $rs['referencia'] ?></td>
+                                        <td>R$ <?= number_format($rs['valor'], 2, ',', '.') ?></td>
+                                        <?php
+                                            $sql = "SELECT id, valor FROM busca_comissoes_total_pagamento WHERE referencia like '".$rs['referencia']."' AND data_pagamento = '".$rs['data_pagamento']."' AND dental = ".$rs['dental'].";";
+                                            // echo "--> ".$sql;
+                                            $selectTotal = mysqli_query($conect, $sql);
+                                            while ($rsTotalNota = mysqli_fetch_assoc($selectTotal)){
+                                                ?>
+                                                    <td><?=number_format($rsTotalNota['valor'], 2, ',', '.')?></td>
+                                                <?php
+                                            }
+
+                                        ?>
+                                    </tr>
+                                <?php
+                                }
+                                ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#!" class="modal-close waves-effect waves-green btn-flat">fechar</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lançamentos -->
+            <div class="row">
+                <ul class="tabs tabs-fixed-width tab-demo z-depth-1">
+                    <?php if (sizeof($comissoesEncontradas) > 0) { ?>
+                        <li class="tab"><a class="active" href="#test1">Há serem Lançadas (<?= sizeof($comissoesEncontradas); ?>)</a></li>
+                    <?php } ?>
+                    <?php if (sizeof($comissoesPagas) > 0) { ?>
+                        <li class="tab"><a href="#test2">Lançadas (<?= sizeof($comissoesPagas); ?>)</a></li>
+                    <?php } ?>
+                    <?php if (sizeof($comissoesNaoEncontradas) > 0) { ?>
+                        <li class="tab"><a href="#test3">Nao encontradas (<?= sizeof($comissoesNaoEncontradas); ?>)</a></li>
+                    <?php } ?>
+                    <?php if (sizeof($comissoesNegativas) > 0) { ?>
+                        <li class="tab"><a href="#test4">Negativas (<?= sizeof($comissoesNegativas); ?>)</a></li>
+                    <?php } ?>
+                    <?php if (sizeof($parcelasFaltando) > 0) { ?>
+                        <li class="tab"><a href="#test5">Parcelas Faltando (<?= sizeof($parcelasFaltando); ?>)</a></li>
+                    <?php } ?>
+                </ul>
+                <div id="test1" class="col s12">
+                    <?= $comissoesEncontradasString; ?>
+                </div>
+                <div id="test2" class="col s12">
+                    <?= $comissoesPagasString; ?>
+                </div>
+                <div id="test3" class="col s12">
+                    <?= $comissoesNaoEncontradasString; ?>
+                </div>
+                <div id="test4" class="col s12">
+                    <?= $comissoesNegativasString; ?>
+                </div>
+                <div id="test5" class="col s12">
+                    <?= $parcelasFaltandoString; ?>
+                </div>
+            </div>
         </div>
-        <div class="row">
-            <ul class="tabs tabs-fixed-width tab-demo z-depth-1">
-                <?php if (sizeof($comissoesEncontradas) > 0) { ?>
-                    <li class="tab"><a class="active" href="#test1">Há serem Lançadas (<?= sizeof($comissoesEncontradas); ?>)</a></li>
-                <?php } ?>
-                <?php if (sizeof($comissoesPagas) > 0) { ?>
-                    <li class="tab"><a href="#test2">Lançadas (<?= sizeof($comissoesPagas); ?>)</a></li>
-                <?php } ?>
-                <?php if (sizeof($comissoesNaoEncontradas) > 0) { ?>
-                    <li class="tab"><a href="#test3">Nao encontradas (<?= sizeof($comissoesNaoEncontradas); ?>)</a></li>
-                <?php } ?>
-                <?php if (sizeof($comissoesNegativas) > 0) { ?>
-                    <li class="tab"><a href="#test4">Negativas (<?= sizeof($comissoesNegativas); ?>)</a></li>
-                <?php } ?>
-                <?php if (sizeof($parcelasFaltando) > 0) { ?>
-                    <li class="tab"><a href="#test5">Parcelas Faltando (<?= sizeof($parcelasFaltando); ?>)</a></li>
-                <?php } ?>
-            </ul>
-            <div id="test1" class="col s12">
-                <?= $comissoesEncontradasString; ?>
-            </div>
-            <div id="test2" class="col s12">
-                <?= $comissoesPagasString; ?>
-            </div>
-            <div id="test3" class="col s12">
-                <?= $comissoesNaoEncontradasString; ?>
-            </div>
-            <div id="test4" class="col s12">
-                <?= $comissoesNegativasString; ?>
-            </div>
-            <div id="test5" class="col s12">
-                <?= $parcelasFaltandoString; ?>
-            </div>
-        </div>
-    </div>
+    <?php
+    }
+    ?>
 
     <!-- Efeito do load -->
     <script>
         //código usando jQuery
-            $(document).ready(function() {
-                $('.progress').hide();
-            });
-            $('#btn_pesquisa').click(function() {
-                if ($('#data_inicial').val() != "") {
-                    $('.progress').show();
-                }
-            });
+        $(document).ready(function() {
+            $('.progress').hide();
+        });
+        $('#btn_pesquisa').click(function() {
+            if ($('#data_inicial').val() != "") {
+                $('.progress').show();
+            }
+        });
     </script>
 </body>
 
 </html>
 
 <?php
-    mysqli_close($conect);
+mysqli_close($conect);
 ?>

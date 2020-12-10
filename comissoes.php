@@ -5,7 +5,7 @@ require_once('includes/functions.php');
 require_once "agrupar_comissoes.php";
 require_once "pagar_comissao.php";
 
-$log = false;
+$log = true;
 
 $tblFinalizado = array();
 $tblComissoes = array();
@@ -182,55 +182,61 @@ function processo($array, $salvarSistema){
             }
 
             if($idOrigem > 0){
-                $res = procuraPeloNumeroContratoAtual($contrato, $idOperadora);
-                if($res){
-                    $idFinalizado = $res['id'];
-                    $portabilidade = $res['portabilidade'];
-                    $contrato = $res['n_apolice'];
-                    $operadoraFinalizado = $res['id_operadora'];
-                    $nomeContrato = $res['razao_social'];
-
-                    if ($operadoraFinalizado == 5){
-                        $idOrigem = 22;
-                    }
-                    
-
-                }else{
-                    $res = procuraPelaRazaoSocial($nomeContrato, $idOperadora);
+                if($idFinalizado == "" || $idFinalizado == null || $idFinalizado == 0){
+                    $res = procuraPeloNumeroContratoAtual($contrato, $idOperadora);
                     if($res){
                         $idFinalizado = $res['id'];
                         $portabilidade = $res['portabilidade'];
+                        if($refDental == 0){
+                            $contrato = $res['n_apolice'];
+                        }else{
+                            $contrato = $res['contrato_dental'];
+                        }
+                        $operadoraFinalizado = $res['id_operadora'];
                         $nomeContrato = $res['razao_social'];
-                    }else{
-                        $buscaRazaoSocialArray = array();
-                        if($idOperadora == 2){
-                            // $sql = "select * from tbl_finalizado where razao_social like '%$nomeContrato%' and (id_operadora = $idOperadora or id_operadora = 5);";
-                            $sql = "select id,id_operadora, id_tipo_plano, razao_social, n_apolice, valor from tbl_finalizado where replace(replace(replace(replace(replace(razao_social, '-', ''), '.',''), ' ',''), '/',''), '&', '')  like '%".str_replace(' ', '', str_replace("&", "", $nomeContrato))."%' and (id_operadora = $idOperadora or id_operadora = 5);";
-                        }else{
-                            // $sql = "select * from tbl_finalizado where razao_social like '%$nomeContrato%' and where id_operadora = $idOperadora;";
 
-                            $sql = "select id,id_operadora, id_tipo_plano, razao_social, n_apolice, valor from tbl_finalizado where replace(replace(replace(replace(replace(razao_social, '-', ''), '.',''), ' ',''), '/',''), '&', '')  like '%".str_replace(' ', '', str_replace( "&", "", $nomeContrato))."%' and id_operadora = $idOperadora;";
+                        if ($operadoraFinalizado == 5){
+                            $idOrigem = 22;
                         }
-                        // echo "<p>$sql</p>";
-                        $buscaRazaoSocial = mysqli_query($conect, $sql);
-                        while ($rs_busca = mysqli_fetch_assoc($buscaRazaoSocial)){
-                            array_push($buscaRazaoSocialArray, $rs_busca);
-                        }
-
-                        if(sizeof($buscaRazaoSocialArray) == 1){
-                            $row = $buscaRazaoSocialArray[0];
-                            if($row['razao_social'] != "" && $row['razao_social'] != null){
-                                $idFinalizado = intval($row['id']);
-                                $nomeContrato = $row['razao_social'];
-                            }else{
-                                array_push($comissoesNaoEncontradas, $comissaoRow);
-                            }
-                            
-                        }else{
-                            // echo "Mais de um contrato encontrado";
-                        }
-
                         
+
+                    }else{
+                        $res = procuraPelaRazaoSocial($nomeContrato, $idOperadora);
+                        if($res){
+                            $idFinalizado = $res['id'];
+                            $portabilidade = $res['portabilidade'];
+                            $nomeContrato = $res['razao_social'];
+                        }else{
+                            $buscaRazaoSocialArray = array();
+                            if($idOperadora == 2){
+                                // $sql = "select * from tbl_finalizado where razao_social like '%$nomeContrato%' and (id_operadora = $idOperadora or id_operadora = 5);";
+                                $sql = "select id,id_operadora, id_tipo_plano, razao_social, n_apolice, valor from tbl_finalizado where replace(replace(replace(replace(replace(razao_social, '-', ''), '.',''), ' ',''), '/',''), '&', '')  like '%".str_replace(' ', '', str_replace("&", "", $nomeContrato))."%' and (id_operadora = $idOperadora or id_operadora = 5);";
+                            }else{
+                                // $sql = "select * from tbl_finalizado where razao_social like '%$nomeContrato%' and where id_operadora = $idOperadora;";
+
+                                $sql = "select id,id_operadora, id_tipo_plano, razao_social, n_apolice, valor from tbl_finalizado where replace(replace(replace(replace(replace(razao_social, '-', ''), '.',''), ' ',''), '/',''), '&', '')  like '%".str_replace(' ', '', str_replace( "&", "", $nomeContrato))."%' and id_operadora = $idOperadora;";
+                            }
+                            // echo "<p>$sql</p>";
+                            $buscaRazaoSocial = mysqli_query($conect, $sql);
+                            while ($rs_busca = mysqli_fetch_assoc($buscaRazaoSocial)){
+                                array_push($buscaRazaoSocialArray, $rs_busca);
+                            }
+
+                            if(sizeof($buscaRazaoSocialArray) == 1){
+                                $row = $buscaRazaoSocialArray[0];
+                                if($row['razao_social'] != "" && $row['razao_social'] != null){
+                                    $idFinalizado = intval($row['id']);
+                                    $nomeContrato = $row['razao_social'];
+                                }else{
+                                    array_push($comissoesNaoEncontradas, $comissaoRow);
+                                }
+                                
+                            }else{
+                                // echo "Mais de um contrato encontrado";
+                            }
+
+                            
+                        }
                     }
                 }
             }else{
@@ -290,7 +296,7 @@ function processo($array, $salvarSistema){
                 }
                 
                 # Procurar novamente mas com outro id_origem
-                if (sizeof($trasacoes) == 0 && $idOrigem == 18 && $parcela > 1){
+                if (sizeof($trasacoes) == 0 && $idOrigem == 18 && $parcela >= 1){
                     $idOrigem = 22;
                     $sql = "select * from tbl_transacoes where id_finalizado = $idFinalizado AND id_origem = $idOrigem;";
                 

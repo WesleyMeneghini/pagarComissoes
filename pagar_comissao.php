@@ -3,15 +3,18 @@
 require_once("includes/config.php");
 require_once('includes/functions.php');
 
+$data = date("Y-m-d");
+
 function lancaComissaoVitaliciaSemDistribuicao($comissao){
     global $conect;
+    global $data;
+
     $id_busca_comissao = $comissao['idBuscaComissao'];
     $valor_calc = $comissao['valor_calc'];
     $id_origem = $comissao['id_origem'];
     $id_destino = $comissao['id_destino'];
     $id_transacao = 7;
     $descricao = $comissao['descricao'];
-    $data = date("Y-m-d");
     $txt_id_finalizado = $comissao['txt_id_finalizado'];
     $txt_parcela = $comissao['txt_parcela'];
     $refDental = $comissao['dental'];
@@ -45,13 +48,14 @@ function lancaComissaoVitaliciaSemDistribuicao($comissao){
 function pagarComissoes($comissao){
 
     global $conect;
+    global $data;
+
     $id_busca_comissao = $comissao['idBuscaComissao'];
     $valor_calc = $comissao['valor_calc'];
     $id_origem = $comissao['id_origem'];
     $id_destino = $comissao['id_destino'];
     $id_transacao = $comissao['id_transacao'];
     $descricao = $comissao['descricao'];
-    $data = date("Y-m-d");
     $txt_id_finalizado = $comissao['txt_id_finalizado'];
     $txt_parcela = $comissao['txt_parcela'];
 
@@ -199,7 +203,7 @@ function pagarComissoes($comissao){
                 $account = 1;
             }
 
-            if ($contador == 7){
+            if ($contador == 8){
                 $supervisor_adm = 1;
             }
 
