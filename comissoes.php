@@ -5,7 +5,7 @@ require_once('includes/functions.php');
 require_once "agrupar_comissoes.php";
 require_once "pagar_comissao.php";
 
-$log = true;
+$log = false;
 
 $tblFinalizado = array();
 $tblComissoes = array();
@@ -51,6 +51,8 @@ function processo($array, $salvarSistema){
     $comissoesEncontradas = array();
     $comissoesPagas = array();
     $comissoesNaoEncontradas = array();
+
+    $parcelasNaoPagas = array();
 
     for($i = 0 ; $i < sizeof($comissoes); $i++){
 
@@ -99,6 +101,14 @@ function processo($array, $salvarSistema){
                 break;
             case "SULAMERICA":
                 $contrato = $proposta;
+                break;
+            case "SOMPO":
+                if($parcela <= 3){
+                    $porcentagem = 100;
+                    // number_format($comissao['valor_calc'], 2, ',', '.')
+                    $imposto = number_format($valor_calc * 0.035, 2);
+                    $valor_calc = $valor_calc - $imposto;
+                }
                 break;
             // case "BRADESCO-DENTAL":
             //     $contrato = $contrato - 1;
@@ -252,7 +262,7 @@ function processo($array, $salvarSistema){
 
             if ($idFinalizado > 0){
                 if ($log){
-                // echo "<h5> ID: <strong style='color:green;'>ID FINALIZADO: $idFinalizado </strong> encontrou</h5>";
+                    echo "<h5> ID: <strong style='color:green;'>ID FINALIZADO: $idFinalizado </strong> encontrou</h5>";
                 }
 
 
@@ -319,14 +329,53 @@ function processo($array, $salvarSistema){
                 // echo "<p></p>";
                 // var_dump($listaParcelasNaoPagas);
                 $refComissaoPendente = false;
-                $parcelasNaoPagas = array();
+                
 
                 foreach($listaParcelasNaoPagas as $key){
                     if ($key == $parcela){
                         $refComissaoPendente = true;
                         // echo "<h5><strong style='color:red;'>Falta pagar a ultima parcela lançada pela operadora: ".$key."</strong></h5>";
                     }else{
-                        array_push($parcelasNaoPagas, $key);
+
+                        // echo "<h2 style='display:block;'>$refDental</h2>";
+
+                        if (intval($refDental) == 0){
+                            // echo "<h2 style='display:block;'>Qualquer coisa</h2>";
+
+                            $sql = "";
+
+                            if ($key <= 5){
+                                $sql = "SELECT * FROM tbl_transacoes WHERE id_origem = '$idOrigem' AND id_finalizado = '$idFinalizado' AND parcela < '$key' AND dental = 0 ORDER BY data, valor LIMIT 1;";
+                            }else{
+                                $sql = "SELECT * FROM tbl_transacoes WHERE id_origem = '$idOrigem' AND id_finalizado = '$idFinalizado' AND parcela > '$key' AND dental = 0 ORDER BY data, valor LIMIT 1;";
+                            }
+                            // echo "<h2 '>teste2 $sql</h2>";
+                            $select = mysqli_query($conect, $sql);
+                            while($rs = mysqli_fetch_assoc($select)){
+                                $rs['parcela_faltando'] = $key;
+                                $segundaComissao = $rs;
+
+                                if ($idOperadora == 3){
+                                    $rs['comissao_calculada'] = $key == 4 || $key == 5 ? $rs['valor']*0.5 : $rs['valor'];
+
+                                    $segundaComissao['comissao_calculada'] = $key == 4 || $key == 5 ? $segundaComissao['valor']*0.04 : "";
+                                    // echo "parcela faltando: ".json_encode($segundaComissao);
+                                    if ($segundaComissao['comissao_calculada'] != ""){
+                                        array_push($parcelasNaoPagas, $segundaComissao);
+                                    }
+                                }
+                                array_push($parcelasNaoPagas, $rs);
+                                // echo sizeof($parcelasNaoPagas);
+                                // echo "parcela faltando: ".json_encode($parcelasNaoPagas);
+                            }
+                            // echo "parcela faltando: ".json_encode($parcelasNaoPagas);
+
+                            // echo $sql;
+
+
+
+                            
+                        }
                         if ($log){
                             echo "<h5><strong style='color:red;'>Falta Pagar a parcela: ".$key." </strong>.</h5>";
                         }
@@ -340,6 +389,10 @@ function processo($array, $salvarSistema){
                         echo "<h5>".($baseComissao-$valor_calc)."</h5>";
                     }
                     $valor_calc = $baseComissao;
+                }
+
+                if ($idOperadora == 4 && $porcentagem < 95){
+                    $idTransacao = 7;
                 }
                 
 
@@ -424,10 +477,12 @@ function processo($array, $salvarSistema){
 
     $comissoesEncontradasJson = json_encode($comissoesEncontradas);
     $comissoesNaoEncontradasJson = json_encode($comissoesNaoEncontradas);
+    $parcelasNaoPagasJson = json_encode($parcelasNaoPagas);
     echo "
     <script> 
         let teste1 = $comissoesEncontradasJson ; console.log('Encontrados: ',teste1);
         let teste2 = $comissoesNaoEncontradasJson ; console.log('Nao Encontrados :', teste2);
+        let teste3 = $parcelasNaoPagasJson ; console.log('Parcelas nao pagas :', teste3);
     </script>";
 
 
@@ -443,7 +498,7 @@ function processo($array, $salvarSistema){
                 array_push($comissoesNegativas, $comissao);
             }else{
                 # COLOCAR A PARTE AS COMISSOES QUE TEM INCLUSAO
-                if (intval($comissao['porcentagem']) < 20 && $comissao['parcela'] < 4){
+                if ((intval($comissao['porcentagem']) < 20 && $comissao['parcela'] < 4) || $comissao['id_transacao'] == 7){
                     // echo "<p>Pagar a parte ".$comissao['razao_social']."</p>";
                     array_push($comissoesPagarAParte, $comissao);
                     lancaComissaoVitaliciaSemDistribuicao($comissao);
