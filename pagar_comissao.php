@@ -5,7 +5,8 @@ require_once('includes/functions.php');
 
 $data = date("Y-m-d");
 
-function lancaComissaoVitaliciaSemDistribuicao($comissao){
+function lancaComissaoVitaliciaSemDistribuicao($comissao)
+{
     // echo "vitalicio";
     global $conect;
     global $data;
@@ -26,13 +27,13 @@ function lancaComissaoVitaliciaSemDistribuicao($comissao){
     $valor_calc = preg_replace('/\,/', '.', $valor_calc);
     $valor_calc = preg_replace('/\.(\d{3})/', '$1', $valor_calc);
 
-    if ($refDental){
+    if ($refDental) {
         $refDental = 1;
-    }else{
+    } else {
         $refDental = 0;
     }
 
-    if ($porcentagem == null){
+    if ($porcentagem == null) {
         $porcentagem = 0;
     }
 
@@ -42,13 +43,14 @@ function lancaComissaoVitaliciaSemDistribuicao($comissao){
     // echo $insert_transacoes;
     $res = mysqli_query($conect, $insert_transacoes) or die(mysqli_error($conect));
 
-    if (($id_busca_comissao != null || $id_busca_comissao != "" ) && $res){
+    if (($id_busca_comissao != null || $id_busca_comissao != "") && $res) {
         $updateStatus = "UPDATE `busca_comissoes` SET `paga`='1', `id_finalizado`='$txt_id_finalizado' WHERE `id`='$id_busca_comissao';";
         mysqli_query($conect, $updateStatus) or die(mysqli_error($conect));
     }
 }
 
-function pagarComissoes($comissao){
+function pagarComissoes($comissao)
+{
     // echo "distribuir";
     global $conect;
     global $data;
@@ -70,12 +72,12 @@ function pagarComissoes($comissao){
     $refDental = $comissao['dental'];
     $porcentagem = $comissao['porcentagem'];
 
-    if ($refDental){
+    if ($refDental) {
         $refDental = 1;
-    }else{
+    } else {
         $refDental = 0;
     }
-    if ($porcentagem == null){
+    if ($porcentagem == null) {
         $porcentagem = 0;
     }
 
@@ -119,7 +121,7 @@ function pagarComissoes($comissao){
         $portabilidade = $rs['portabilidade'];
         $data_venda = $rs['data_lancamento'];
         $empresarial = 1;
-        $acompanhado = 0;
+        $id_treinador = 0;
 
         //Usuários base
         $usuario[] = $rs['id_corretor'];
@@ -138,8 +140,18 @@ function pagarComissoes($comissao){
             $usuario[] = 101;
         }
 
-        if ($rs['id_companhia'] > 0) {
-            $acompanhado = 1;
+        //Área do treinador
+
+        $sql = "select * from tbl_treinador_usuario where id_usuario = '" . $rs['id_corretor'] . "' and ('$data_venda' between dt_venda_inicio and if(dt_venda_fim is not null, dt_venda_fim, '$data_venda'));";
+        //echo $sql;
+        $result_treinador = mysqli_query($conect, $sql);
+
+        if ($rs_treinador = mysqli_fetch_array($result_treinador)) {
+            $usuario[] = $rs_treinador['id_treinador'];
+            $id_treinador = $rs_treinador['id_treinador'];
+            //echo $id_treinador;
+        } else {
+            $usuario[] = 0;
         }
 
         if ($id_sindicato > 0) {
@@ -183,13 +195,13 @@ function pagarComissoes($comissao){
             while ($rs = mysqli_fetch_array($result)) {
 
                 $sql2 = "select sum(valor) as valor_venda from tbl_finalizado where 
-                                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "'
-                                or data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_call_center = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "'
-                                or data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_supervisor_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "';";
+                            data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "'
+                            or data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_call_center = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "'
+                            or data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_supervisor_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "';";
 
                 if ($contador == 0) {
                     $sql2 = "select sum(valor) as valor_venda from tbl_finalizado where 
-                                    data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "';";
+                                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "';";
                 }
 
                 $result2 = mysqli_query($conect, $sql2) or die(mysqli_error($conect));
@@ -205,6 +217,7 @@ function pagarComissoes($comissao){
             $closer = 0;
             $account = 0;
             $supervisor_adm = 0;
+            $treinador = 0;
 
             if ($contador == 0) {
                 $corretor = 1;
@@ -222,12 +235,12 @@ function pagarComissoes($comissao){
                 $account = 1;
             }
 
-            if ($contador == 5) {
-                $call_center = 1;
+            if ($contador == 4) {
+                $supervisor_adm = 1;
             }
 
-            if ($contador == 6) {
-                $supervisor_adm = 1;
+            if ($contador == 5) {
+                $call_center = 1;
             }
 
             if ($contador == 7) {
@@ -236,7 +249,19 @@ function pagarComissoes($comissao){
                 }
             }
 
-            $sql = "select u.id_tipo_comissao, u.id_tipo_empresa, tcv.* from tbl_usuario as u inner join tbl_tipo_comissao_valor as tcv on tcv.id_tipo_comissao = if(u.id_tipo_comissao = 3, if('$data_venda' >= '2020-10-01', 1, 3), u.id_tipo_comissao) where u.id_usuario = '" . $usuario[$contador] . "' and tcv.parcela = '$txt_parcela' and tcv.id_tipo_venda = '$id_tipo_venda' and tcv.empresarial = '$empresarial' and tcv.portabilidade = '$portabilidade' and tcv.corretor = '$corretor' and tcv.produtor = '$produtor' and tcv.closer = '$closer' and tcv.supervisor_adm = '$supervisor_adm' and tcv.account = '$account' and tcv.acompanhado = '$acompanhado' and ('$valor_venda' between tcv.meta_min and if(tcv.meta_max > 0, tcv.meta_max, '$valor_venda')) and if(tcv.id_tipo_comissao_corretor = 0, '$id_tipo_comissao_corretor', tcv.id_tipo_comissao_corretor) = '$id_tipo_comissao_corretor'";
+            if ($id_treinador > 0) {
+                if ($id_call_center > 0) {
+                    if ($contador == 8) {
+                        $treinador = 1;
+                    }
+                } else {
+                    if ($contador == 7) {
+                        $treinador = 1;
+                    }
+                }
+            }
+
+            $sql = "select u.id_tipo_comissao, u.id_tipo_empresa, tcv.* from tbl_usuario as u inner join tbl_tipo_comissao_valor as tcv on tcv.id_tipo_comissao = if(u.id_tipo_comissao = 3, if('$data_venda' >= '2020-10-01', 1, 3), u.id_tipo_comissao) where u.id_usuario = '" . $usuario[$contador] . "' and tcv.parcela = '$txt_parcela' and tcv.id_tipo_venda = '$id_tipo_venda' and tcv.empresarial = '$empresarial' and tcv.portabilidade = '$portabilidade' and tcv.corretor = '$corretor' and tcv.produtor = '$produtor' and tcv.closer = '$closer' and tcv.treinador = '$treinador' and tcv.supervisor_adm = '$supervisor_adm' and tcv.account = '$account' and ('$valor_venda' between tcv.meta_min and if(tcv.meta_max > 0, tcv.meta_max, '$valor_venda')) and if(tcv.id_tipo_comissao_corretor = 0, '$id_tipo_comissao_corretor', tcv.id_tipo_comissao_corretor) = '$id_tipo_comissao_corretor'";
             $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
 
             if ($rs = mysqli_fetch_array($result)) {
@@ -275,6 +300,7 @@ function pagarComissoes($comissao){
                     }
                 }
             }
+
             $contador++;
         }
     }
