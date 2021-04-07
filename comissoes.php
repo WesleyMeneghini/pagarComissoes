@@ -81,7 +81,8 @@ function processo($array, $salvarSistema){
         $refDental = $comissaoRow['dental'];
         $valorBrutoComissao = $comissaoRow['base_comissao'];
         $statusComissao = $comissaoRow['paga'];
-        // $idFinalizado = $comissaoRow['id_finalizado'];
+        $idTipoComissao = $comissaoRow['id_tipo_comissao'];
+        $idFinalizado = $comissaoRow['id_finalizado'];
 
         $ref_arr = explode(" ", $referencia);
         switch(strtoupper($ref_arr[0])){
@@ -105,22 +106,16 @@ function processo($array, $salvarSistema){
             case "SOMPO":
                 if($parcela <= 3){
                     $porcentagem = 100;
-                    // number_format($comissao['valor_calc'], 2, ',', '.')
                     $imposto = number_format($valor_calc * 0.035, 2);
                     $valor_calc = $valor_calc - $imposto;
                 }
                 break;
-            // case "BRADESCO-DENTAL":
-            //     $contrato = $contrato - 1;
-            //     break;
             default:
                 break;
 
         }
 
         if ($log){
-
-            // echo "<br><p style='color:blue;'>-> <strong>$operadora</strong></p>";
             echo "<br><p style='color:blue;'>-> <strong>$referencia</strong></p>";
             echo "<p><strong>Busca: </strong> (id_busca) - <strong>$nomeContrato</strong> (Nome Contrato) - $contrato (Numero da apolice)</p>";
             echo "<p><strong>Parcela: </strong>".$parcela."</p>";
@@ -193,6 +188,7 @@ function processo($array, $salvarSistema){
 
             if($idOrigem > 0){
                 if($idFinalizado == "" || $idFinalizado == null || $idFinalizado == 0){
+                    // echo "procurar sem id";
                     $res = procuraPeloNumeroContratoAtual($contrato, $idOperadora);
                     if($res){
                         $idFinalizado = $res['id'];
@@ -248,6 +244,23 @@ function processo($array, $salvarSistema){
                             
                         }
                     }
+                }else{
+                    $res = procuraFinalizado($idFinalizado);
+                    if($res){
+                        $idFinalizado = $res['id'];
+                        $portabilidade = $res['portabilidade'];
+                        if($refDental == 0){
+                            $contrato = $res['n_apolice'];
+                        }else{
+                            $contrato = $res['contrato_dental'];
+                        }
+                        $operadoraFinalizado = $res['id_operadora'];
+                        $nomeContrato = $res['razao_social'];
+
+                        if ($operadoraFinalizado == 5){
+                            $idOrigem = 22;
+                        }
+                    }
                 }
             }else{
                 if ($log){
@@ -268,7 +281,7 @@ function processo($array, $salvarSistema){
 
                 // Varificando as parcelas da Sulamerica
                 // echo "<h5> ID: <strong style='color:red;'>$parcela</h5>";
-                if ($idOperadora == 4 && $parcela >= 1 && $referencia == 'SULAMERICA'){
+                if ($idOperadora == 4 && $parcela <= 1 && $referencia == 'SULAMERICA' ){
                     $sql = "SELECT max(parcela) as ultima_parcela from tbl_transacoes where id_origem = $idOrigem and id_finalizado = $idFinalizado;";
                     $buscaUltimaParcela = mysqli_query($conect, $sql);
                     while ($rs_busca = mysqli_fetch_assoc($buscaUltimaParcela)){
@@ -390,6 +403,11 @@ function processo($array, $salvarSistema){
                     }
                     $valor_calc = $baseComissao;
                 }
+                if ($idOperadora == 12 && $parcela == 3){
+                    $valor_calc = $baseComissao;
+                    $imposto = number_format($valor_calc * 0.035, 2);
+                    $valor_calc = $valor_calc - $imposto;
+                }
 
                 if ($idOperadora == 4 && $porcentagem < 95){
                     $idTransacao = 7;
@@ -399,6 +417,15 @@ function processo($array, $salvarSistema){
                 if ($parcela > 3){
                     $idTransacao = 7;
                 }
+
+                if ($idTipoComissao > 0){
+                    $idTransacao = 1;
+                }
+
+                if ($idOperadora == 4 && ($valor_calc == 41.00 && $porcentagem == 100)){
+                    $refDental = true;
+                }
+
 
                 $dadosComissao = [
                     'idBuscaComissao' => $idBuscaComissao,
@@ -416,7 +443,8 @@ function processo($array, $salvarSistema){
                     'operadora' => $referencia,
                     'parcelasNaoPagas' => $parcelasNaoPagas,
                     'valor_bruto' => $valorBrutoComissao,
-                    'dataPagamento' => $dataPagamento
+                    'dataPagamento' => $dataPagamento,
+                    'id_tipo_comissao' => $idTipoComissao
                 ];
                 
 
@@ -525,10 +553,22 @@ function processo($array, $salvarSistema){
 // processo($tblComissoes, false);
 
 
+function procuraFinalizado($idFinalizado){
+    global $conect;
+
+    $sql = "SELECT * FROM tbl_finalizado WHERE id = '$idFinalizado';";
+    $selectFinalizado = mysqli_query($conect, $sql);
+    if($rsFinalizado = mysqli_fetch_assoc($selectFinalizado)){
+        return $rsFinalizado;
+    }else{
+        return false;
+    }
+}
+
 function procuraPeloNumeroContratoAtual( $numeroContrato, $idOperadora){
     global $tblFinalizado;
 
-    if ($numeroContrato != "" && $numeroContrato != null){
+    if ($numeroContrato != "" && $numeroContrato != null && ($numeroContrato != 0 || $numeroContrato != "0")){
     
         $numeroContratoSplit = explode("/", $numeroContrato);
         for($i = 0 ; $i <= sizeof($tblFinalizado); $i++){
