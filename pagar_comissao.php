@@ -182,7 +182,7 @@ function pagarComissoes($comissao)
 
         $id_tipo_comissao_corretor = 0;
 
-        $sql = "select u.id_tipo_comissao from tbl_usuario as u where id_usuario = '".$rs['id_corretor']."'";
+        $sql = "select u.id_tipo_comissao from tbl_usuario as u where id_usuario = '" . $rs['id_corretor'] . "'";
         $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
         if ($rs = mysqli_fetch_array($result)) {
             $id_tipo_comissao_corretor = $rs['id_tipo_comissao'];
@@ -198,17 +198,19 @@ function pagarComissoes($comissao)
             $valor_venda = 0;
 
             $sql = "select cmc.* from tbl_usuario as u inner join tbl_config_meta_comissionamento as cmc on cmc.id_tipo_comissao = if(u.id_tipo_comissao = 3, if('$data_venda' >= '2020-10-01', 1, 3), u.id_tipo_comissao) where id_usuario = '" . $usuario[$contador] . "'";
+
             $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
+
             while ($rs = mysqli_fetch_array($result)) {
 
                 $sql2 = "select sum(valor) as valor_venda from tbl_finalizado where 
-                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and  id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "'
-                or data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_call_center = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "'
-                or data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_supervisor_corretor = '" . $usuario[$contador] . "' and id_status not in (17) and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "';";
+                            data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "'
+                            or data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_call_center = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "'
+                            or data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_supervisor_corretor = '" . $usuario[$contador] . "' and id_status not in (17) and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "';";
 
                 if ($contador == 0) {
                     $sql2 = "select sum(valor) as valor_venda from tbl_finalizado where 
-                    data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "' and id_status not in (17);";
+                                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "' and id_status not in (17);";
                 }
 
                 $result2 = mysqli_query($conect, $sql2) or die(mysqli_error($conect));
@@ -275,9 +277,22 @@ function pagarComissoes($comissao)
             if ($rs = mysqli_fetch_array($result)) {
                 $porcentagem = $rs['porcentagem'];
 
-                if ($id_operadora == 12 && $contador == 0 && $txt_parcela == 1) {
+                if ($id_operadora == 12 && $contador == 0 && $txt_parcela == 1 ) {
                     $sql = "select sum(valor) as valor_venda from tbl_finalizado where 
-                    data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $portabilidade . "' and id_tipo_venda = '$id_tipo_venda' and id_status not in (17) and id_operadora = '$id_operadora';";
+                                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $portabilidade . "' and id_tipo_venda = '$id_tipo_venda' and id_status not in (17) and id_operadora = '$id_operadora';";
+
+                    $result_alt = mysqli_query($conect, $sql) or die(mysqli_error($conect));
+
+                    if ($rs_alt = mysqli_fetch_array($result_alt)) {
+                        if ($rs_alt['valor_venda'] > 10000 && $rs_alt['valor_venda'] <= 20000) {
+                            $porcentagem += 10;
+                        } else if ($rs_alt['valor_venda'] > 20000) {
+                            $porcentagem += 20;
+                        }
+                    }
+                } else if ($id_operadora == 3 && $contador == 0 && $txt_parcela == 1 && $data_venda >= "2021-04-01") {
+                    $sql = "select sum(valor) as valor_venda from tbl_finalizado where 
+                                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $portabilidade . "' and id_tipo_venda = '$id_tipo_venda' and id_status not in (17) and id_operadora = '$id_operadora';";
 
                     $result_alt = mysqli_query($conect, $sql) or die(mysqli_error($conect));
 
