@@ -34,9 +34,9 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
         $buscaOperadoras = "= '$idOperadora'";
     }
 
-    $sql = "SELECT data_inicial, data_final, nome_contrato, data_pagamento, sum(comissao) as comissao, parcela, porcentagem, contrato_atual, id_operadora, id_conta, dental, referencia, contrato_atual, proposta, base_comissao, paga 
+    $sql = "SELECT data_inicial, data_final, nome_contrato, data_pagamento, sum(comissao) as comissao, parcela, porcentagem, contrato_atual, id_operadora, id_conta, dental, referencia, contrato_atual, proposta, sum(base_comissao) as base_comissao, paga 
     from busca_comissoes where id_operadora $buscaOperadoras and referencia not like 'SULAMERICA' and  ((data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal') or (data_inicial >= '$dataInicial' and data_final <= '$dataFinal')) 
-    group by nome_contrato, contrato_atual, porcentagem, data_pagamento, referencia, proposta, parcela, id_operadora, id_conta, dental, data_inicial, data_final, base_comissao, paga order by  parcela;";
+    group by nome_contrato, contrato_atual, porcentagem, data_pagamento, referencia, proposta, parcela, id_operadora, id_conta, dental, data_inicial, data_final, paga order by  parcela;";
 
 
 
@@ -61,7 +61,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
 
     // echo $sql;
 
-    $comissoesEncontradasString = '<div id="test1" class="col s12"><ul class="collapsible popout expandable">';
+    $comissoesEncontradasString = '<div id="test1" class="col s12">'.$sql.'<ul class="collapsible popout expandable">';
 
     $operadora = "";
     foreach ($comissoesProcessadas[0] as $comissao) {
@@ -249,11 +249,11 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
         $parcelasNaoPagas = "";
         foreach ($comissao['parcelasNaoPagas'] as $parc) {
             if ($parcelasNaoPagas == "") {
-                $parcelasNaoPagas .= "<li><strong class='red-text'>Parcelas não lançadas: </strong>";
+                $parcelasNaoPagas .= "<li><strong class='red-text'>Parcela (".$parc['parcela_faltando']."): </strong> R$ ".$parc['comissao_calculada']." Data (".$parc['data'].")</li> <h3>".$parc['descricao']."</h3>";
             }
             $parcelasNaoPagas .= $parc . ", ";
         }
-        $parcelasNaoPagas .= "</li>";
+        $parcelasNaoPagas .= "";
 
         if ($operadora == "" || $operadora != $comissao['operadora']) {
             $operadora = $comissao['operadora'];
@@ -263,8 +263,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
         $parcelasFaltandoString .= '
             <li key="' . $comissao['txt_id_finalizado'] . '" class="active">
                 <div class="collapsible-header">
-                ' . $operadora . ' - ' . $comissao['descricao'] . '
-                <span class="new badge"></span>
+                (' . $operadora . ') - ' . $comissao['descricao'] . '
                 </div>
                 <div class="collapsible-body">
                     <ul>
