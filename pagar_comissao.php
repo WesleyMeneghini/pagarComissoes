@@ -118,6 +118,7 @@ function pagarComissoes($comissao)
         //Infos úteis do contrato
         $id_tipo_venda = $rs['id_tipo_venda'];
         $id_sindicato = $rs['id_sindicato'];
+        $id_operadora = $rs['id_operadora'];
         $portabilidade = $rs['portabilidade'];
         $data_venda = $rs['data_lancamento'];
         $empresarial = 1;
@@ -269,7 +270,37 @@ function pagarComissoes($comissao)
             $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
 
             if ($rs = mysqli_fetch_array($result)) {
-                $porcentagem = $rs['porcentagem'] / 100;
+                $porcentagem = $rs['porcentagem'];
+
+                if ($id_operadora == 12 && $contador == 0 && $txt_parcela == 1 && $data_venda <= "2021-03-31") {
+                    $sql = "select sum(valor) as valor_venda from tbl_finalizado where 
+                                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $portabilidade . "' and id_tipo_venda = '$id_tipo_venda' and id_status not in (17) and id_operadora = '$id_operadora';";
+
+                    $result_alt = mysqli_query($conect, $sql) or die(mysqli_error($conect));
+
+                    if ($rs_alt = mysqli_fetch_array($result_alt)) {
+                        if ($rs_alt['valor_venda'] > 10000 && $rs_alt['valor_venda'] <= 20000) {
+                            $porcentagem += 10;
+                        } else if ($rs_alt['valor_venda'] > 20000) {
+                            $porcentagem += 20;
+                        }
+                    }
+                } else if ($id_operadora == 3 && $contador == 0 && $txt_parcela == 1 && $data_venda >= "2021-04-01") {
+                    $sql = "select sum(valor) as valor_venda from tbl_finalizado where 
+                                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $portabilidade . "' and id_tipo_venda = '$id_tipo_venda' and id_status not in (17) and id_operadora = '$id_operadora';";
+
+                    $result_alt = mysqli_query($conect, $sql) or die(mysqli_error($conect));
+
+                    if ($rs_alt = mysqli_fetch_array($result_alt)) {
+                        if ($rs_alt['valor_venda'] > 10000 && $rs_alt['valor_venda'] <= 20000) {
+                            $porcentagem += 10;
+                        } else if ($rs_alt['valor_venda'] > 20000) {
+                            $porcentagem += 20;
+                        }
+                    }
+                }
+
+                $porcentagem = $porcentagem / 100;
                 $valor_calc_base = $valor_calc * $porcentagem;
                 $descricao_comissao = $rs['descricao'];
                 $tipo_empresa = $rs['id_tipo_empresa'];
