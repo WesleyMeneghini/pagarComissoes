@@ -1,7 +1,7 @@
 <?php
 
-require_once("includes/config.php");
-require_once('includes/functions.php');
+// require_once("includes/config.php");
+// require_once('includes/functions.php');
 
 $data = date("Y-m-d");
 
@@ -95,7 +95,7 @@ function pagarComissoes($comissao)
     (data, descricao, id_origem,id_destino,valor, id_finalizado, parcela, id_transacao, id_usuario, dental, porcentagem, data_pagamento_operadora) values 
     ( '$data' , '$descricao' , '$id_origem' , '$id_destino' , '$valor_calc', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', '" . $_SESSION['id-usuario'] . "', '$refDental', '$porcentagem', '$dataPagamentoOperadora') ";
 
-    //echo $insert_transacoes;
+    // echo $insert_transacoes;
 
     $res = mysqli_query($conect, $insert_transacoes) or die(mysqli_error($conect));
 
@@ -116,14 +116,11 @@ function pagarComissoes($comissao)
         /******DADOS SOBRE A PROPOSTA*****/
 
         //Infos úteis do contrato
-        $id_operadora = $rs['id_operadora'];
         $id_tipo_venda = $rs['id_tipo_venda'];
         $id_sindicato = $rs['id_sindicato'];
-        $id_tipo_adesao = $rs['id_tipo_adesao'];
         $portabilidade = $rs['portabilidade'];
         $data_venda = $rs['data_lancamento'];
         $empresarial = 1;
-        $acompanhado = 0;
         $id_treinador = 0;
 
         //Usuários base
@@ -138,10 +135,6 @@ function pagarComissoes($comissao)
 
         //Supervisores        
         $usuario[] = $rs['id_supervisor'];
-
-        if ($rs['id_companhia'] > 0) {
-            $acompanhado = 1;
-        }
 
         if ($id_call_center > 0) {
             $usuario[] = 101;
@@ -175,7 +168,6 @@ function pagarComissoes($comissao)
         //Área técnica
         $usuario[] = 26;
         $usuario[] = 60;
-        $usuario[] = 139;
         $usuario[] = 142;
         $usuario[] = 143;
         $usuario[] = 144;
@@ -197,20 +189,18 @@ function pagarComissoes($comissao)
         while ($contador < count($usuario)) {
             $valor_venda = 0;
 
-            $sql = "select cmc.* from tbl_usuario as u inner join tbl_config_meta_comissionamento as cmc on cmc.id_tipo_comissao = if(u.id_tipo_comissao = 3, if('$data_venda' >= '2020-10-01', 1, 3), u.id_tipo_comissao) where id_usuario = '" . $usuario[$contador] . "'";
-
+            $sql = "select cmc.* from tbl_usuario as u inner join tbl_config_meta_comissionamento as cmc on cmc.id_tipo_comissao = if(u.id_tipo_comissao = 17, if('$data_venda' >= '2021-05-01', 17, 1), if(u.id_tipo_comissao = 3, if('$data_venda' >= '2020-10-01', 1, 3), u.id_tipo_comissao)) where id_usuario = '" . $usuario[$contador] . "'";
             $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
-
             while ($rs = mysqli_fetch_array($result)) {
 
                 $sql2 = "select sum(valor) as valor_venda from tbl_finalizado where 
                             data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "'
                             or data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_call_center = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "'
-                            or data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_supervisor_corretor = '" . $usuario[$contador] . "' and id_status not in (17) and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "';";
+                            or data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_supervisor_corretor = '" . $usuario[$contador] . "' and id_status not in (17,19) and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "';";
 
                 if ($contador == 0) {
                     $sql2 = "select sum(valor) as valor_venda from tbl_finalizado where 
-                                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "' and id_status not in (17);";
+                                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $rs['empresarial'] . "' and id_tipo_venda = '" . $rs['id_tipo_venda'] . "' and id_status not in (17,19);";
                 }
 
                 $result2 = mysqli_query($conect, $sql2) or die(mysqli_error($conect));
@@ -222,6 +212,7 @@ function pagarComissoes($comissao)
 
             $corretor = 0;
             $produtor = 0;
+            $administrativo = 0;
             $call_center = 0;
             $closer = 0;
             $account = 0;
@@ -242,6 +233,10 @@ function pagarComissoes($comissao)
 
             if ($contador == 3) {
                 $account = 1;
+            }
+
+            if ($contador == 4) {
+                $administrativo = 1;
             }
 
             if ($contador == 5) {
@@ -270,48 +265,17 @@ function pagarComissoes($comissao)
                 }
             }
 
-            $sql = "select u.id_tipo_comissao, u.id_tipo_empresa, tcv.* from tbl_usuario as u inner join tbl_tipo_comissao_valor as tcv on tcv.id_tipo_comissao = if(u.id_tipo_comissao = 3, if('$data_venda' >= '2020-10-01', 1, 3), u.id_tipo_comissao) where u.id_usuario = '" . $usuario[$contador] . "' and tcv.parcela = '$txt_parcela' and tcv.id_tipo_venda = '$id_tipo_venda' and tcv.empresarial = '$empresarial' and tcv.portabilidade = '$portabilidade' and tcv.id_tipo_adesao = '$id_tipo_adesao' and tcv.corretor = '$corretor' and tcv.produtor = '$produtor' and tcv.closer = '$closer' and tcv.acompanhado = '$acompanhado' and tcv.treinador = '$treinador' and tcv.supervisor_adm = '$supervisor_adm' and tcv.account = '$account' and ('$valor_venda' between tcv.meta_min and if(tcv.meta_max > 0, tcv.meta_max, '$valor_venda')) and if(tcv.id_tipo_comissao_corretor = 0, '$id_tipo_comissao_corretor', tcv.id_tipo_comissao_corretor) = '$id_tipo_comissao_corretor'";
-            //echo $sql."<br>";
+            $sql = "select u.id_tipo_comissao, u.id_tipo_empresa, tcv.* from tbl_usuario as u inner join tbl_tipo_comissao_valor as tcv on tcv.id_tipo_comissao = if(u.id_tipo_comissao = 17, if('$data_venda' >= '2021-05-01', 17, 1), if(u.id_tipo_comissao = 3, if('$data_venda' >= '2020-10-01', 1, 3), u.id_tipo_comissao)) where u.id_usuario = '" . $usuario[$contador] . "' and tcv.parcela = '$txt_parcela' and tcv.id_tipo_venda = '$id_tipo_venda' and tcv.empresarial = '$empresarial' and tcv.portabilidade = '$portabilidade' and tcv.corretor = '$corretor' and tcv.produtor = '$produtor' and tcv.closer = '$closer' and tcv.treinador = '$treinador' and tcv.supervisor_adm = '$supervisor_adm' and tcv.account = '$account' and ('$valor_venda' between tcv.meta_min and if(tcv.meta_max > 0, tcv.meta_max, '$valor_venda')) and if(tcv.id_tipo_comissao_corretor = 0, '$id_tipo_comissao_corretor', tcv.id_tipo_comissao_corretor) = '$id_tipo_comissao_corretor'";
             $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
 
             if ($rs = mysqli_fetch_array($result)) {
-                $porcentagem = $rs['porcentagem'];
-
-                if ($id_operadora == 12 && $contador == 0 && $txt_parcela == 1 ) {
-                    $sql = "select sum(valor) as valor_venda from tbl_finalizado where 
-                                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $portabilidade . "' and id_tipo_venda = '$id_tipo_venda' and id_status not in (17) and id_operadora = '$id_operadora';";
-
-                    $result_alt = mysqli_query($conect, $sql) or die(mysqli_error($conect));
-
-                    if ($rs_alt = mysqli_fetch_array($result_alt)) {
-                        if ($rs_alt['valor_venda'] > 10000 && $rs_alt['valor_venda'] <= 20000) {
-                            $porcentagem += 10;
-                        } else if ($rs_alt['valor_venda'] > 20000) {
-                            $porcentagem += 20;
-                        }
-                    }
-                } else if ($id_operadora == 3 && $contador == 0 && $txt_parcela == 1 && $data_venda >= "2021-04-01") {
-                    $sql = "select sum(valor) as valor_venda from tbl_finalizado where 
-                                data_lancamento like '" . date("Y-m-", strtotime($data_venda)) . "%' and id_corretor = '" . $usuario[$contador] . "' and portabilidade = '" . $portabilidade . "' and id_tipo_venda = '$id_tipo_venda' and id_status not in (17) and id_operadora = '$id_operadora';";
-
-                    $result_alt = mysqli_query($conect, $sql) or die(mysqli_error($conect));
-
-                    if ($rs_alt = mysqli_fetch_array($result_alt)) {
-                        if ($rs_alt['valor_venda'] > 10000 && $rs_alt['valor_venda'] <= 20000) {
-                            $porcentagem += 10;
-                        } else if ($rs_alt['valor_venda'] > 20000) {
-                            $porcentagem += 20;
-                        }
-                    }
-                }
-
-                $porcentagem = $porcentagem / 100;
+                $porcentagem = $rs['porcentagem'] / 100;
                 $valor_calc_base = $valor_calc * $porcentagem;
                 $descricao_comissao = $rs['descricao'];
                 $tipo_empresa = $rs['id_tipo_empresa'];
 
                 $sql = "SELECT * FROM tbl_usuario_conta_comissao where id_usuario = '" . $usuario[$contador] . "'";
-                $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
+                $result = mysqli_query($conect, $sql) or die(mysqli_error($connect));
 
                 while ($rs = mysqli_fetch_array($result)) {
                     $id_conta_insert = $rs['id_conta'];
@@ -329,9 +293,28 @@ function pagarComissoes($comissao)
                     //echo "<br>".$valor_calc_base." - ".$valor_calc_liquid." - ".$rs['porcentagem']." - ".$rs['imposto']." / ";
 
                     if ($corretor == 1) {
-                        $transacao = "INSERT INTO tbl_transacoes(data,descricao,id_origem,id_destino,valor, id_finalizado, parcela, vendedor, id_transacao, id_bruto, irrf, id_usuario, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '" . $valor_calc_liquid . "', '$txt_id_finalizado', '$txt_parcela', '1', '$id_transacao', '$id_bruto', '$irrf', '" . $_SESSION['id-usuario'] . "', '$refDental') ";
+                        $transacao = "INSERT INTO tbl_transacoes(data,descricao,id_origem,id_destino,valor, id_finalizado, parcela, vendedor, id_transacao, id_bruto, irrf, id_usuario, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '" . $valor_calc_liquid . "', '$txt_id_finalizado', '$txt_parcela', '1', '$id_transacao', '$id_bruto', '$irrf', '" . $_SESSION['id-usuario'] . "', '".$refDental."') ";
 
                         mysqli_query($conect, $transacao) or die(mysqli_error($conect));
+                    } else if ($administrativo && $data_venda >= "2021-04-26") {
+
+                        //Adicionando todos os outros implantadores
+                        $sql_adm = "select u.id_usuario, c.id as id_conta from tbl_usuario as u left join tbl_contas as c on c.id_usuario = u.id_usuario where u.id_nivel = '5' and u.disponibilidade = 1;";
+                        $result_adm = mysqli_query($conect, $sql_adm) or die(mysqli_error($conect));
+                        $qtd_pessoas = mysqli_num_rows($result_adm);
+
+                        //echo $sql_adm."<br>";
+                        //echo $qtd_pessoas;
+                        //Divisao de porcentagem
+                        $valor_calc_liquid = $valor_calc_liquid / $qtd_pessoas;
+
+                        while ($rs_adm = mysqli_fetch_array($result_adm)) {
+                            $id_conta_insert = $rs_adm['id_conta'];
+
+                            $transacao = "INSERT INTO tbl_transacoes(data,descricao,id_origem,id_destino,valor, id_finalizado, parcela, id_transacao, id_bruto, irrf, id_usuario, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '" . $valor_calc_liquid . "', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', '$id_bruto', '$irrf', '" . $_SESSION['id-usuario'] . "', '".$refDental."') ";
+
+                            mysqli_query($conect, $transacao) or die(mysqli_error($conect));
+                        }
                     } else {
                         $transacao = "INSERT INTO tbl_transacoes(data, descricao, id_origem, id_destino, valor, id_finalizado, parcela, id_transacao, id_bruto, irrf, id_usuario, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '" . $valor_calc_liquid . "', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', '$id_bruto', '$irrf', '" . $_SESSION['id-usuario'] . "', '$refDental') ";
 
