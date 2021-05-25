@@ -3,6 +3,7 @@
 require_once "comissoes.php";
 
 
+
 $comissoesEncontradas = array();
 $comissoesPagas = array();
 $comissoesNaoEncontradas = array();

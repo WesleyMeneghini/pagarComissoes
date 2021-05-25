@@ -1,9 +1,10 @@
 <?php
 
-require_once("includes/config.php");
-require_once('includes/functions.php');
-require_once "agrupar_comissoes.php";
+require_once("../includes/config.php");
+require_once('../includes/functions.php');
 require_once "pagar_comissao.php";
+
+$conect = conexaoMysql();
 
 $log = false;
 
@@ -67,7 +68,7 @@ function processo($array, $salvarSistema){
         
         $idBuscaComissao = $comissaoRow['id'];
 
-        $referencia = (string) strtoupper($comissaoRow['referencia']);
+        $referencia = (string) mb_strtoupper($comissaoRow['referencia']);
         $nomeContrato = $comissaoRow['nome_contrato'];
         $contrato = $comissaoRow['contrato_atual'];
         $proposta = $comissaoRow['proposta'];
@@ -106,6 +107,12 @@ function processo($array, $salvarSistema){
             case "SOMPO":
                 if($parcela <= 3){
                     $porcentagem = 100;
+                    $imposto = number_format($valor_calc * 0.035, 2);
+                    $valor_calc = $valor_calc - $imposto;
+                }
+                break;
+            case "PORTO":
+                if($parcela <= 3){
                     $imposto = number_format($valor_calc * 0.035, 2);
                     $valor_calc = $valor_calc - $imposto;
                 }
@@ -262,6 +269,9 @@ function processo($array, $salvarSistema){
                         }
                     }
                 }
+
+                $idCorretor = $res['id_corretor'];
+
             }else{
                 if ($log){
                     echo "<p style='color:red;'>Não achou a conta de origem!</p>";
@@ -386,8 +396,6 @@ function processo($array, $salvarSistema){
                             // echo $sql;
 
 
-
-                            
                         }
                         if ($log){
                             echo "<h5><strong style='color:red;'>Falta Pagar a parcela: ".$key." </strong>.</h5>";
@@ -424,6 +432,16 @@ function processo($array, $salvarSistema){
 
                 if ($idOperadora == 4 && ($valor_calc == 41.00 && $porcentagem == 100)){
                     $refDental = true;
+                }
+                if ($idOperadora == 4 && ($idTipoComissao == 2 || $idTipoComissao == 1)){
+                    $idOrigem = 20;
+                    
+                    $idTransacao = 1;
+                    $porcentagem = 100;
+                }
+
+                if ($idCorretor == 7){
+                    $idTransacao = 1;
                 }
 
 

@@ -1,7 +1,7 @@
 <?php
 
-require_once("includes/config.php");
-require_once('includes/functions.php');
+// require_once("includes/config.php");
+// require_once('includes/functions.php');
 
 function agruparComissoes($array){
     $tblComissoes = $array;
