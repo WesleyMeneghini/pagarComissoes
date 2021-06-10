@@ -44,7 +44,7 @@ function lancaComissaoVitaliciaSemDistribuicao($comissao)
     $res = mysqli_query($conect, $insert_transacoes) or die(mysqli_error($conect));
 
     if (($id_busca_comissao != null || $id_busca_comissao != "") && $res) {
-        $updateStatus = "UPDATE `busca_comissoes` SET `paga`='1', `id_finalizado`='$txt_id_finalizado' WHERE `id`='$id_busca_comissao';";
+        $updateStatus = "UPDATE `busca_comissoes` SET `paga`='1', `id_finalizado`='$txt_id_finalizado', `parcela`=$txt_parcela WHERE `id`='$id_busca_comissao';";
         mysqli_query($conect, $updateStatus) or die(mysqli_error($conect));
     }
 }
@@ -103,7 +103,7 @@ function pagarComissoes($comissao)
 
     // Atualizar o status da tabela da busca_comissoes
     if (($id_busca_comissao != null || $id_busca_comissao != "") && $res) {
-        $updateStatus = "UPDATE `busca_comissoes` SET `paga`='1', `id_finalizado`='$txt_id_finalizado' WHERE `id`='$id_busca_comissao';";
+        $updateStatus = "UPDATE `busca_comissoes` SET `paga`='1', `id_finalizado`='$txt_id_finalizado', `parcela`=$txt_parcela  WHERE `id`='$id_busca_comissao';";
         mysqli_query($conect, $updateStatus) or die(mysqli_error($conect));
     }
 
@@ -119,6 +119,7 @@ function pagarComissoes($comissao)
         $id_tipo_venda = $rs['id_tipo_venda'];
         $id_sindicato = $rs['id_sindicato'];
         $id_operadora = $rs['id_operadora'];
+        $id_tipo_adesao = $rs['id_tipo_adesao'];
         $portabilidade = $rs['portabilidade'];
         $data_venda = $rs['data_lancamento'];
         $empresarial = 1;
@@ -266,7 +267,7 @@ function pagarComissoes($comissao)
                 }
             }
 
-            $sql = "select u.id_tipo_comissao, u.id_tipo_empresa, tcv.* from tbl_usuario as u inner join tbl_tipo_comissao_valor as tcv on tcv.id_tipo_comissao = if(u.id_tipo_comissao = 17, if('$data_venda' >= '2021-05-01', 17, 1), if(u.id_tipo_comissao = 3, if('$data_venda' >= '2020-10-01', 1, 3), u.id_tipo_comissao)) where u.id_usuario = '" . $usuario[$contador] . "' and tcv.parcela = '$txt_parcela' and tcv.id_tipo_venda = '$id_tipo_venda' and tcv.empresarial = '$empresarial' and tcv.portabilidade = '$portabilidade' and tcv.corretor = '$corretor' and tcv.produtor = '$produtor' and tcv.closer = '$closer' and tcv.treinador = '$treinador' and tcv.supervisor_adm = '$supervisor_adm' and tcv.account = '$account' and ('$valor_venda' between tcv.meta_min and if(tcv.meta_max > 0, tcv.meta_max, '$valor_venda')) and if(tcv.id_tipo_comissao_corretor = 0, '$id_tipo_comissao_corretor', tcv.id_tipo_comissao_corretor) = '$id_tipo_comissao_corretor'";
+            $sql = "select u.id_tipo_comissao, u.id_tipo_empresa, tcv.* from tbl_usuario as u inner join tbl_tipo_comissao_valor as tcv on tcv.id_tipo_comissao = if(u.id_tipo_comissao = 17, if('$data_venda' >= '2021-05-01', 17, 1), if(u.id_tipo_comissao = 3, if('$data_venda' >= '2020-10-01', 1, 3), u.id_tipo_comissao)) where u.id_usuario = '".$usuario[$contador]."' and tcv.parcela = '$txt_parcela' and tcv.id_tipo_venda = '$id_tipo_venda' and tcv.empresarial = '$empresarial' and tcv.portabilidade = '$portabilidade' and tcv.corretor = '$corretor' and tcv.produtor = '$produtor' and tcv.closer = '$closer' and tcv.treinador = '$treinador' and tcv.supervisor_adm = '$supervisor_adm' and tcv.account = '$account' and tcv.id_tipo_adesao = '$id_tipo_adesao' and ('$valor_venda' between tcv.meta_min and if(tcv.meta_max > 0, tcv.meta_max, '$valor_venda')) and if(tcv.id_tipo_comissao_corretor = 0, '$id_tipo_comissao_corretor', tcv.id_tipo_comissao_corretor) = '$id_tipo_comissao_corretor'";            
             $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
 
             if ($rs = mysqli_fetch_array($result)) {
@@ -306,7 +307,7 @@ function pagarComissoes($comissao)
                 $tipo_empresa = $rs['id_tipo_empresa'];
 
                 $sql = "SELECT * FROM tbl_usuario_conta_comissao where id_usuario = '" . $usuario[$contador] . "'";
-                $result = mysqli_query($conect, $sql) or die(mysqli_error($connect));
+                $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
 
                 while ($rs = mysqli_fetch_array($result)) {
                     $id_conta_insert = $rs['id_conta'];
@@ -324,8 +325,7 @@ function pagarComissoes($comissao)
                     //echo "<br>".$valor_calc_base." - ".$valor_calc_liquid." - ".$rs['porcentagem']." - ".$rs['imposto']." / ";
 
                     if ($corretor == 1) {
-                        $transacao = "INSERT INTO tbl_transacoes(data,descricao,id_origem,id_destino,valor, id_finalizado, parcela, vendedor, id_transacao, id_bruto, irrf, id_usuario, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '" . $valor_calc_liquid . "', '$txt_id_finalizado', '$txt_parcela', '1', '$id_transacao', '$id_bruto', '$irrf', '" . $_SESSION['id-usuario'] . "', '".$refDental."') ";
-
+                        $transacao = "INSERT INTO tbl_transacoes(data,descricao,id_origem,id_destino,valor, id_finalizado, parcela, vendedor, id_transacao, id_bruto, irrf, id_usuario, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '" . $valor_calc_liquid . "', '$txt_id_finalizado', '$txt_parcela', '1', '$id_transacao', '$id_bruto', '$irrf', '" . $_SESSION['id-usuario'] . "', '".$refDental."') ;";
                         mysqli_query($conect, $transacao) or die(mysqli_error($conect));
                     } else if ($administrativo && $data_venda >= "2021-04-26") {
 
@@ -343,7 +343,7 @@ function pagarComissoes($comissao)
                             $id_conta_insert = $rs_adm['id_conta'];
 
                             $transacao = "INSERT INTO tbl_transacoes(data,descricao,id_origem,id_destino,valor, id_finalizado, parcela, id_transacao, id_bruto, irrf, id_usuario, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '" . $valor_calc_liquid . "', '$txt_id_finalizado', '$txt_parcela', '$id_transacao', '$id_bruto', '$irrf', '" . $_SESSION['id-usuario'] . "', '".$refDental."') ";
-
+                            // echo "$transacao **";
                             mysqli_query($conect, $transacao) or die(mysqli_error($conect));
                         }
                     } else {
