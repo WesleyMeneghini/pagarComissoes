@@ -84,6 +84,7 @@ function processo($array, $salvarSistema){
         $statusComissao = $comissaoRow['paga'];
         $idTipoComissao = $comissaoRow['id_tipo_comissao'];
         $idFinalizado = $comissaoRow['id_finalizado'];
+        $idFinalizadoInicial = $idFinalizado;
 
         $ref_arr = explode(" ", $referencia);
         switch(strtoupper($ref_arr[0])){
@@ -271,6 +272,7 @@ function processo($array, $salvarSistema){
                 }
 
                 $idCorretor = $res['id_corretor'];
+                $idOperadora = $res['id_operadora'];
 
             }else{
                 if ($log){
@@ -443,7 +445,8 @@ function processo($array, $salvarSistema){
                 if ($idCorretor == 7){
                     $idTransacao = 1;
                 }
-
+                
+                $nomeContrato = str_replace("'", ' ', $nomeContrato);
 
                 $dadosComissao = [
                     'idBuscaComissao' => $idBuscaComissao,
@@ -464,6 +467,19 @@ function processo($array, $salvarSistema){
                     'dataPagamento' => $dataPagamento,
                     'id_tipo_comissao' => $idTipoComissao
                 ];
+
+                if ((! $idFinalizadoInicial > 0) && $idBuscaComissao > 0){
+                    $updateComissao = "UPDATE 
+                                            busca_comissoes 
+                                        SET 
+                                            id_finalizado = $idFinalizado, 
+                                            id_conta = $idOrigem,
+                                            id_operadora = $idOperadora 
+                                        WHERE 
+                                            id=$idBuscaComissao;";
+
+                    mysqli_query($conect, $updateComissao);
+                }
                 
 
                 $ref = false;
