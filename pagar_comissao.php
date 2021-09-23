@@ -1,8 +1,5 @@
 <?php
 
-// require_once("includes/config.php");
-// require_once('includes/functions.php');
-
 $data = date("Y-m-d");
 
 function lancaComissaoVitaliciaSemDistribuicao($comissao)
@@ -45,7 +42,7 @@ function lancaComissaoVitaliciaSemDistribuicao($comissao)
 
     if (($id_busca_comissao != null || $id_busca_comissao != "") && $res) {
         $updateStatus = "UPDATE 
-                            `busca_comissoes` 
+                            `tbl_comissoes_operadora` 
                         SET 
                             `paga`='1', 
                             `id_finalizado`= '$txt_id_finalizado', 
@@ -109,10 +106,10 @@ function pagarComissoes($comissao)
 
     $id_bruto = mysqli_insert_id($conect);
 
-    // Atualizar o status da tabela da busca_comissoes
+    // Atualizar o status da tabela da tbl_comissoes_operadora
     if (($id_busca_comissao != null || $id_busca_comissao != "") && $res) {
         $updateStatus = "UPDATE 
-                            `busca_comissoes` 
+                            `tbl_comissoes_operadora` 
                         SET 
                             `paga`='1', 
                             `id_finalizado`= '$txt_id_finalizado', 
@@ -425,8 +422,8 @@ function pagarComissoes($comissao)
             }
         }
         /*
-                        Fim
-                    */
+            Fim
+        */
 
         //Usuários base
         $usuario[] = $rs['id_corretor'];
@@ -447,6 +444,9 @@ function pagarComissoes($comissao)
         }
 
         //Área do treinador
+        $old_data_venda = $data_venda;
+        $data_treinador = $data_venda;
+        $treinador_ativo = 0;
 
         $sql = "select * from tbl_treinador_usuario where id_usuario = '" . $rs['id_corretor'] . "' and ('$data_venda' between dt_venda_inicio and if(dt_venda_fim is not null, dt_venda_fim, '$data_venda'));";
         //echo $sql;
@@ -456,10 +456,18 @@ function pagarComissoes($comissao)
             $usuario[] = $rs_treinador['id_treinador'];
             $id_treinador = $rs_treinador['id_treinador'];
             $treinador = 1;
+            $treinador_ativo = 1;
             //echo $id_treinador;
+
+            if ($rs_treinador['dt_saida'] < $data_venda && $rs_treinador['dt_venda_inicio'] < "2021-06-01") {
+                $data_treinador = $rs_treinador['dt_venda_inicio'];
+                $treinador = 0;
+            }
         } else {
             $usuario[] = 0;
         }
+
+        $old_treinador = $treinador;
 
         $usuario[] = $rs['id_supervisor_corretor'];
 
@@ -486,6 +494,7 @@ function pagarComissoes($comissao)
         //print_r($usuario);
         while ($contador < count($usuario)) {
             $valor_venda = 0;
+            $data_venda = $old_data_venda;
 
             $sql = "select cmc.* from tbl_usuario as u inner join tbl_config_meta_comissionamento as cmc on cmc.id_tipo_comissao = if(u.id_tipo_comissao = 17, if('$data_venda' >= '2021-05-01', 17, 1), if(u.id_tipo_comissao = 3, if('$data_venda' >= '2020-10-01', 1, 3), u.id_tipo_comissao)) where id_usuario = '" . $usuario[$contador] . "'";
             $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
@@ -519,6 +528,7 @@ function pagarComissoes($comissao)
             $account = 0;
             $supervisor_adm = 0;
             $gestor = 0;
+            $treinador = $old_treinador;
 
             if ($contador == 0) {
                 $corretor = 1;
@@ -555,11 +565,23 @@ function pagarComissoes($comissao)
             if ($contador == 8) {
                 if ($id_call_center > 0) {
                     $call_center = 1;
+                } else if ($treinador_ativo) {
+                    $treinador = 1;
+                    $data_venda = $data_treinador;
+                }
+            }
+
+            if ($contador == 9) {
+                if ($id_call_center > 0) {
+                    if ($treinador_ativo) {
+                        $treinador = 1;
+                        $data_venda = $data_treinador;
+                    }
                 }
             }
 
             $sql = "select u.id_tipo_comissao, u.id_tipo_empresa, tcv.* from tbl_usuario as u inner join tbl_tipo_comissao_valor as tcv on tcv.id_tipo_comissao = if(u.id_tipo_comissao = 17, if('$data_venda' >= '2021-05-01', 17, 1), if(u.id_tipo_comissao = 3, if('$data_venda' >= '2020-10-01', 1, 3), u.id_tipo_comissao)) where u.id_usuario = '" . $usuario[$contador] . "' and tcv.parcela = '$txt_parcela' and tcv.id_tipo_venda = '$id_tipo_venda' and tcv.empresarial = '$empresarial' and tcv.portabilidade = '$portabilidade' and tcv.corretor = '$corretor' and tcv.produtor = '$produtor' and tcv.acompanhado = '$acompanhado' and tcv.closer = '$closer' and tcv.treinador = '$treinador' and tcv.supervisor_adm = '$supervisor_adm' and tcv.account = '$account' and tcv.gestor = '$gestor' and tcv.id_tipo_adesao = '$id_tipo_adesao' and ('$valor_venda' between tcv.meta_min and if(tcv.meta_max > 0, tcv.meta_max, '$valor_venda')) and ('$data_venda' between if(tcv.dt_inicio is null, '$data_venda', dt_inicio) and if(dt_fim is null, '$data_venda', dt_fim)) and if(tcv.id_tipo_comissao_corretor = 0, '$id_tipo_comissao_corretor', tcv.id_tipo_comissao_corretor) = '$id_tipo_comissao_corretor'";
-            // echo "<br><br>".$sql."<br><br>";
+            //echo $sql."<br><br>";
             $result = mysqli_query($conect, $sql) or die(mysqli_error($conect));
 
             if ($rs = mysqli_fetch_array($result)) {
@@ -622,9 +644,10 @@ function pagarComissoes($comissao)
                     } else if ($administrativo && $data_venda >= "2021-04-26") {
 
                         //Adicionando todos os outros implantadores
-                        $sql_adm = "select u.id_usuario, c.id as id_conta from tbl_usuario as u left join tbl_contas as c on c.id_usuario = u.id_usuario where u.id_nivel = '5' and u.disponibilidade = 1 and data_entrada <= '$data_venda';";                        $result_adm = mysqli_query($conect, $sql_adm) or die(mysqli_error($conect));
+                        $sql_adm = "select u.id_usuario, c.id as id_conta from tbl_usuario as u left join tbl_contas as c on c.id_usuario = u.id_usuario where u.id_nivel = '5' and u.disponibilidade = 1 and data_entrada <= '$data_venda';";
+                        $result_adm = mysqli_query($conect, $sql_adm) or die(mysqli_error($conect));
                         $qtd_pessoas = mysqli_num_rows($result_adm);
-                        
+
                         //echo $sql_adm."<br>";
                         //echo $qtd_pessoas;
                         //Divisao de porcentagem

@@ -3,7 +3,6 @@
 require_once "comissoes.php";
 
 
-
 $comissoesEncontradas = array();
 $comissoesPagas = array();
 $comissoesNaoEncontradas = array();
@@ -36,11 +35,11 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     }
 
     $sql = "SELECT data_inicial, data_final, nome_contrato, data_pagamento, sum(comissao) as comissao, parcela, porcentagem, contrato_atual, id_operadora, id_conta, dental, referencia, contrato_atual, proposta, sum(base_comissao) as base_comissao, paga 
-    from busca_comissoes where id_operadora $buscaOperadoras and referencia not like 'SULAMERICA' and  ((data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal') or (data_inicial >= '$dataInicial' and data_final <= '$dataFinal')) 
+    from tbl_comissoes_operadora where id_operadora $buscaOperadoras and referencia not like 'SULAMERICA' and  ((data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal') or (data_inicial >= '$dataInicial' and data_final <= '$dataFinal')) 
     group by nome_contrato, contrato_atual, porcentagem, data_pagamento, referencia, proposta, parcela, id_operadora, id_conta, dental, data_inicial, data_final, paga order by  parcela;";
 
     if (intval($idOperadora) == 4) {
-        $sql = "SELECT * from busca_comissoes where id_operadora = $idOperadora and referencia like 'SULAMERICA' and ((data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal') or (data_inicial >= '$dataInicial' and data_final <= '$dataFinal'));";
+        $sql = "SELECT * from tbl_comissoes_operadora where id_operadora = $idOperadora and referencia like 'SULAMERICA' and ((data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal') or (data_inicial >= '$dataInicial' and data_final <= '$dataFinal'));";
     } elseif (intval($idOperadora) == 1 || intval($idOperadora) == 2 || intval($idOperadora) == 5 || intval($idOperadora) == 8 || intval($idOperadora) == 11 || intval($idOperadora) == 12 || intval($idOperadora) == 6) {
         $sql = "SELECT 
                     id,
@@ -62,7 +61,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
                     paga,
                     id_finalizado
                 FROM
-                    busca_comissoes
+                    tbl_comissoes_operadora 
                 WHERE
                     id_operadora = $idOperadora
                         AND (data_pagamento between '$dataInicial' AND '$dataFinal')
@@ -571,7 +570,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
                             </thead>
                             <tbody>
                                 <?php
-                                $sql = "SELECT data_pagamento, sum(comissao) as valor, referencia, dental FROM busca_comissoes WHERE data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal' and id_operadora $buscaOperadoras group by id_conta, data_pagamento, referencia, dental;";
+                                $sql = "SELECT data_pagamento, sum(comissao) as valor, referencia, dental FROM tbl_comissoes_operadora WHERE data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal' and id_operadora $buscaOperadoras group by id_conta, data_pagamento, referencia, dental;";
 
                                 // echo $sql;
                                 $select = mysqli_query($conect, $sql);
@@ -582,7 +581,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
                                         <td><?= $rs['referencia'] ?></td>
                                         <td>R$ <?= number_format($rs['valor'], 2, ',', '.') ?></td>
                                         <?php
-                                        $sql = "SELECT id, valor FROM busca_comissoes_total_pagamento WHERE referencia like '" . $rs['referencia'] . "' AND data_pagamento = '" . $rs['data_pagamento'] . "' AND dental = " . $rs['dental'] . ";";
+                                        $sql = "SELECT id, valor FROM tbl_comissoes_operadora_total_nota WHERE referencia like '" . $rs['referencia'] . "' AND data_pagamento = '" . $rs['data_pagamento'] . "' AND dental = " . $rs['dental'] . ";";
                                         // echo "--> ".$sql;
                                         $selectTotal = mysqli_query($conect, $sql);
                                         while ($rsTotalNota = mysqli_fetch_assoc($selectTotal)) {

@@ -12,20 +12,6 @@ $tblFinalizado = array();
 $tblComissoes = array();
 $tblContas = array();
 
-// // $sql = "select * FROM busca_comissoes where id = 9764;";
-
-
-# SELECIONAR AS COMISSOES QUE SERAO PROCESSADAS
-// $sql = "select * from busca_comissoes where id_operadora = 4 and ((data_pagamento >= '2020-11-16' and data_pagamento <= '2020-11-22') or (data_inicial >= '2020-11-16' and data_final <= '2020-11-22'));";
-
-
-// $select_comissoes = mysqli_query($conect, $sql);
-// // var_dump(mysqli_fetch_assoc($select_comissoes));
-// while ($rs_comissoes = mysqli_fetch_assoc($select_comissoes)){
-//     array_push($tblComissoes, $rs_comissoes);
-// }
-// $comissoes = agruparComissoes($tblComissoes);
-
 $sql = "SELECT * FROM tbl_contas;";
 $select_contas = mysqli_query($conect, $sql);
 while ($rs_conta = mysqli_fetch_assoc($select_contas)){
@@ -37,7 +23,6 @@ $select_finalizado = mysqli_query($conect, $sql);
 while ($rs_finalizado = mysqli_fetch_assoc($select_finalizado)){
     array_push($tblFinalizado, $rs_finalizado);
 }
-// echo sizeof($tblFinalizado)."-----------------------";
 
 function processo($array, $salvarSistema){
     $salvar = $salvarSistema;
@@ -64,8 +49,6 @@ function processo($array, $salvarSistema){
 
         $comissaoRow = $comissoes[$i];
 
-        // echo "<p>".json_encode($comissaoRow)."</p>";
-        
         $idBuscaComissao = $comissaoRow['id'];
 
         $referencia = (string) mb_strtoupper($comissaoRow['referencia']);
@@ -147,7 +130,7 @@ function processo($array, $salvarSistema){
             array_push($porcentagemComissoes, $rs_porcentagem);
             
         }
-        // echo "<h1>".sizeof($porcentagemComissoes)."</h1>";
+        
         if (sizeof($porcentagemComissoes) > 0){
             $porcentagemErrada = true;
             $porcentagemCorreta = 0;
@@ -445,7 +428,7 @@ function processo($array, $salvarSistema){
                 if ($idCorretor == 7){
                     $idTransacao = 1;
                 }
-                
+
                 $nomeContrato = str_replace("'", ' ', $nomeContrato);
 
                 $dadosComissao = [
@@ -470,7 +453,7 @@ function processo($array, $salvarSistema){
 
                 if ((! $idFinalizadoInicial > 0) && $idBuscaComissao > 0){
                     $updateComissao = "UPDATE 
-                                            busca_comissoes 
+                                            tbl_comissoes_operadora  
                                         SET 
                                             id_finalizado = $idFinalizado, 
                                             id_conta = $idOrigem,
