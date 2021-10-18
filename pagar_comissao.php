@@ -641,7 +641,7 @@ function pagarComissoes($comissao)
                     if ($corretor == 1) {
                         $transacao = "INSERT INTO tbl_transacoes(data,descricao,id_origem,id_destino,valor, id_finalizado, parcela, vendedor, id_transacao, id_bruto, irrf, id_usuario, dental) values ( '$data', '$descricao $descricao_comissao' , '$id_destino' , '$id_conta_insert' , '" . $valor_calc_liquid . "', '$txt_id_finalizado', '$txt_parcela', '1', '$id_transacao', '$id_bruto', '$irrf', '" . $_SESSION['id-usuario'] . "', '".$refDental."') ;";
                         mysqli_query($conect, $transacao) or die(mysqli_error($conect));
-                    } else if ($administrativo && $data_venda >= "2021-04-26") {
+                    } else if ($administrativo && $data_venda >= "2021-04-26" && $data_venda < "2021-10-01") {
 
                         //Adicionando todos os outros implantadores
                         $sql_adm = "select u.id_usuario, c.id as id_conta from tbl_usuario as u left join tbl_contas as c on c.id_usuario = u.id_usuario where u.id_nivel = '5' and u.disponibilidade = 1 and data_entrada <= '$data_venda';";

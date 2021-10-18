@@ -39,7 +39,9 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     group by nome_contrato, contrato_atual, porcentagem, data_pagamento, referencia, proposta, parcela, id_operadora, id_conta, dental, data_inicial, data_final, paga order by  parcela;";
 
     if (intval($idOperadora) == 4) {
-        $sql = "SELECT * from tbl_comissoes_operadora where id_operadora = $idOperadora and referencia like 'SULAMERICA' and ((data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal') or (data_inicial >= '$dataInicial' and data_final <= '$dataFinal'));";
+        $sql = "SELECT * from tbl_comissoes_operadora 
+        where id_operadora = $idOperadora and referencia like 'SULAMERICA' and (data_pagamento between '$dataInicial' and '$dataFinal') order by parcela, porcentagem desc;";
+        // echo $sql;
     } elseif (intval($idOperadora) == 1 || intval($idOperadora) == 2 || intval($idOperadora) == 5 || intval($idOperadora) == 8 || intval($idOperadora) == 11 || intval($idOperadora) == 12 || intval($idOperadora) == 6) {
         $sql = "SELECT 
                     id,
@@ -353,7 +355,7 @@ if (isset($_GET['operadora']) && isset($_GET['data_inicial'])) {
     <div class="progress">
         <div class="indeterminate"></div>
     </div>
-    <h1>Front </h1>
+    <!-- <h1>Front </h1> -->
     <div class="container">
 
         <form action="" method="get">

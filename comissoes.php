@@ -415,14 +415,16 @@ function processo($array, $salvarSistema){
                     $idTransacao = 1;
                 }
 
+                if ($idOperadora == 4 && $porcentagem <= 40 && $parcela <= 3){
+                    $parcela = 4;
+                } 
+
                 if ($idOperadora == 4 && ($valor_calc == 41.00 && $porcentagem == 100)){
                     $refDental = true;
                 }
                 if ($idOperadora == 4 && ($idTipoComissao == 2 || $idTipoComissao == 1)){
                     $idOrigem = 20;
-                    
                     $idTransacao = 1;
-                    $porcentagem = 100;
                 }
 
                 if ($idCorretor == 7){
