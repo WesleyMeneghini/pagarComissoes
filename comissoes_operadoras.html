@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <!--Import Google Icon Font-->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!--Import materialize.css-->
+
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+
+    <title>Comissoes</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $.ajax({
+                url: "select_operadoras.php",
+                type: 'GET',
+                data: {
+                    "id": 0,
+                },
+
+            }).done(function (res) {
+                var operadoras = JSON.parse(res);
+                // console.log(operadoras);
+                operadoras.forEach(operadora => {
+                    $('#slc_operadora').append(`<option value='${operadora.id}'>${operadora.titulo}</option>`);
+                })
+
+            });
+
+        })
+
+
+
+
+        const loaderCircle = () => (
+            `<div class="preloader-wrapper big active">
+                <div class="spinner-layer spinner-blue-only">
+                <div class="circle-clipper left">
+                    <div class="circle"></div>
+                </div><div class="gap-patch">
+                    <div class="circle"></div>
+                </div><div class="circle-clipper right">
+                    <div class="circle"></div>
+                </div>
+                </div>
+            </div>`
+        )
+
+        const formatMoedaReal = (number) => {
+            return (parseFloat(number)).toLocaleString('pt-br', {
+                style: 'currency',
+                currency: 'BRL'
+            });
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container">
+
+        <form action="" method="get">
+            <div class="row">
+                <div class="input-field col s6 ">
+                    <select class="browser-default" name="operadora" id="slc_operadora">
+                        <option value="0" selected>Todas as Operadoras</option>
+                    </select>
+                </div>
+                <div class="input-field col s3 ">
+                    <input type='date' id='data_inicial' name='data_inicial' required />
+                    <label for="data_inicial">Data Inicial</label>
+                </div>
+                <div class="input-field col s3 ">
+                    <input type='date' id='data_final' name='data_final' required />
+                    <label for="data_final">Data Final</label>
+                </div>
+                <div class="row">
+                    <div class="input-field col s3 ">
+                        <label>
+                            <input type="checkbox" class="filled-in" id="ck_salvar" name="salva_banco">
+                            <span>Salvar no Sistema</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="input-field col s6 ">
+                    <button class="btn waves-effect waves-light" id="btn_pesquisa" type="submit" name="action"
+                        value="PESQUISAR">
+                        PESQUISAR
+                        <i class="material-icons right">search</i>
+                    </button>
+                    <button id="btn_limpar" class="btn waves-effect waves-light red darken-1" type="button">
+                        LIMPAR
+                        <i class="material-icons right ">clear</i>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="container">
+
+        <!-- Relatório -->
+        <div class="row">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Quantidade</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>Há serem Lançadas</td>
+                        <td>
+                        </td>
+                        <td>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Lançadas</td>
+                        <td>
+                        </td>
+                        <td>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Não Encontradas</td>
+                        <td>
+                        </td>
+                        <td>
+                        </td>
+                    </tr>
+                    <tr class="blue darken-1 white-text">
+                        <td><strong>Total</strong></td>
+                        <td>
+                            <strong>
+                            </strong>
+                        </td>
+                        <td>
+                            <strong>
+                            </strong>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- MOdal detalhes lançamentos -->
+        <div class="row">
+            <!-- Modal Trigger -->
+            <a class="waves-effect waves-light btn modal-trigger" href="#modal1">Detalhes Lançamentos</a>
+
+            <!-- Modal Structure -->
+            <div id="modal1" class="modal">
+                <div class="modal-content">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data Pagamento da Nota</th>
+                                <th>Operadora</th>
+                                <th>Valor Soma Comissoes</th>
+                                <th>Valor da Nota Fiscal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                </td>
+                                <td>
+                                </td>
+                                <td>R$
+                                </td>
+                                <td>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <a href="#!" class="modal-close waves-effect waves-green btn-flat">fechar</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lançamentos -->
+        <div class="row">
+            <ul class="tabs tabs-fixed-width tab-demo z-depth-1">
+                <li class="tab">
+                    <a class="active" href="#test1">
+                        Há serem Lançadas
+                    </a>
+                </li>
+                <li class="tab">
+                    <a href="#test2">
+                        Lançadas
+                    </a>
+                </li>
+                <li class="tab">
+                    <a href="#test3">
+                        Nao encontradas
+                    </a>
+                </li>
+                <li class="tab">
+                    <a href="#test4">
+                        Negativas
+                    </a>
+                </li>
+                <li class="tab">
+                    <a href="#test5">
+                        Parcelas Faltando
+                    </a>
+                </li>
+            </ul>
+            <div id="test1" class="col s12">
+            </div>
+            <div id="test2" class="col s12">
+            </div>
+            <div id="test3" class="col s12">
+            </div>
+            <div id="test4" class="col s12">
+            </div>
+            <div id="test5" class="col s12">
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
