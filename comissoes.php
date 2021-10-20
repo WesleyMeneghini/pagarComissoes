@@ -6,7 +6,7 @@ require_once "pagar_comissao.php";
 
 
 
-$conect = conexaoMysql();
+$conect = conexaoMysqlTest();
 
 $log = false;
 
@@ -556,7 +556,7 @@ function processo($array, $salvarSistema)
         "comissoesNegativas" => $comissoesNegativas
     ]];
 
-    echo json_encode($data);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
 
     // echo $comissoesEncontradas;
     return [$comissoesEncontradas, $comissoesPagas, $comissoesNaoEncontradas, $comissoesNegativas];
@@ -641,11 +641,14 @@ function teste()
     processo($tblComissoes, false);
 }
 
-// teste();
+// $_POST['id_operadora'] = 2;
+// $_POST['data_inicial'] = '2021-10-15';
+// $_POST['data_final'] = '2021-10-15';
+// $_POST['salvar'] = false;
 
 if (isset($_POST['data_inicial']) && isset($_POST['data_final'])) {
 
-    $idOperadora = $_POST['operadora'];
+    $idOperadora = $_POST['id_operadora'];
     $dataInicial = $_POST['data_inicial'];
     $dataFinal = $_POST['data_final'];
     $salvar = $_POST['salvar'];
@@ -692,6 +695,8 @@ if (isset($_POST['data_inicial']) && isset($_POST['data_final'])) {
                         AND (data_pagamento between '$dataInicial' AND '$dataFinal')
                 ORDER BY parcela;";
     }
+
+    // echo $sql;
 
     $select_comissoes = mysqli_query($conect, $sql);
     while ($rs_comissoes = mysqli_fetch_assoc($select_comissoes)) {

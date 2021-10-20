@@ -32,7 +32,12 @@
                 var operadoras = JSON.parse(res);
                 // console.log(operadoras);
                 operadoras.forEach(operadora => {
-                    $('#slc_operadora').append(`<option value='${operadora.id}'>${operadora.titulo}</option>`);
+                    if (operadora.id == 3) {
+                        $('#slc_operadora').append(`<option value='${operadora.id}' selected>${operadora.titulo}</option>`);
+                    } else {
+                        $('#slc_operadora').append(`<option value='${operadora.id}'>${operadora.titulo}</option>`);
+
+                    }
                 })
 
             });
@@ -76,11 +81,11 @@
                     </select>
                 </div>
                 <div class="input-field col s3 ">
-                    <input type='date' id='data_inicial' name='data_inicial' required />
+                    <input type='date' id='data_inicial' name='data_inicial' value='2021-10-15' required />
                     <label for="data_inicial">Data Inicial</label>
                 </div>
                 <div class="input-field col s3 ">
-                    <input type='date' id='data_final' name='data_final' required />
+                    <input type='date' id='data_final' name='data_final' value='2021-10-15' required />
                     <label for="data_final">Data Final</label>
                 </div>
                 <div class="row">
@@ -94,8 +99,7 @@
             </div>
             <div class="row">
                 <div class="input-field col s6 ">
-                    <button class="btn waves-effect waves-light" id="btn_pesquisa" type="submit" name="action"
-                        value="PESQUISAR">
+                    <button class="btn waves-effect waves-light" id="btn_pesquisa" type="submit" name="action">
                         PESQUISAR
                         <i class="material-icons right">search</i>
                     </button>
@@ -196,10 +200,10 @@
         </div>
 
         <!-- Lançamentos -->
-        <div class="row">
+        <div class="row" id="resultado_comissoes">
             <ul class="tabs tabs-fixed-width tab-demo z-depth-1">
                 <li class="tab">
-                    <a class="active" href="#test1">
+                    <a class="active" href="#falta_lancar">
                         Há serem Lançadas
                     </a>
                 </li>
@@ -224,7 +228,7 @@
                     </a>
                 </li>
             </ul>
-            <div id="test1" class="col s12">
+            <div id="falta_lancar" class="col s12">
             </div>
             <div id="test2" class="col s12">
             </div>
@@ -236,6 +240,82 @@
             </div>
         </div>
     </div>
+
+    <script>
+
+        const $dataInicial = $("#data_inicial");
+        const $dataFinal = $("#data_final");
+        const $idOperadora = $("#slc_operadora");
+        const $salvar = $("#ck_salvar");
+
+        $salvar.change(function () {
+            if ($(this).prop("checked") == true) {
+                $('#btn_pesquisa').html("Salvar <i class='material-icons right'>save</i>");
+            } else {
+                $("#btn_pesquisa").html("Pesquisar <i class='material-icons right'>search</i>");
+            }
+        });
+        $salvar.trigger("change");
+
+        const buscaComissoes = () => {
+            let dataInicial = $dataInicial.val();
+            let dataFinal = $dataFinal.val();
+            let idOperadora = $idOperadora.val();
+            let salvar = $salvar.is(":checked");
+
+            const data = {
+                "data_inicial": $dataInicial.val(),
+                "data_final": $dataFinal.val(),
+                "id_operadora": $idOperadora.val(),
+                "salvar": $salvar.is(":checked")
+            }
+
+            console.log(data);
+
+            $.ajax({
+                url: "comissoes.php",
+                type: 'POST',
+                data: data,
+                beforeSend: function () {
+                    $("#resultado_comissoes").html(loaderCircle());
+                },
+                error: function (XMLHttpRequest, textStatus, errorThrown) {
+                    alert("Erro!" + textStatus);
+                }
+            }).done(function (msg) {
+                // console.log(msg);
+                let res = JSON.parse(msg);
+                console.log(res);
+                const {
+                    comissoesComLancamento,
+                    comissoesNaoEncontradas,
+                    comissoesNegativas,
+                    comissoesSemLancamento
+                } = res.data;
+                console.log(comissoesComLancamento)
+
+
+
+                $("#resultado_comissoes").html("");
+            })
+        }
+
+        $("form").submit(function (e) {
+            e.preventDefault();
+            const dataInicial = $("#data_inicial").val();
+            const dataFinal = $("#data_final").val();
+            const idOperadora = $("#slc_operadora").val();
+            const salvar = $("#ck_salvar").is(":checked");
+
+            if ($dataFinal.val() < $dataInicial.val()) {
+                alert("Data inicial não pode ser maior que a final!");
+            } else if ($idOperadora.val() == 0) {
+                alert("Selecione uma operadora!");
+            } else {
+                buscaComissoes();
+            }
+        })
+    </script>
 </body>
 
 </html>

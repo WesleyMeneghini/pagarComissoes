@@ -6,7 +6,7 @@ ini_set('display_errors', 1);
 require_once "../includes/functions.php";
 require_once "../includes/connection.php";
 
-$conect = conexaoMysql();
+$conect = conexaoMysqlTest();
 
 if (isset($_GET['id'])) {
 
