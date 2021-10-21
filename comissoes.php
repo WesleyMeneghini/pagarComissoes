@@ -26,11 +26,8 @@ while ($rs_finalizado = mysqli_fetch_assoc($select_finalizado)) {
 
 function processo($array, $salvarSistema)
 {
-    $salvar = $salvarSistema;
-
     global $log;
     global $conect;
-    global $salvar;
     global $tblContas;
 
     $comissoes = $array;
@@ -520,9 +517,9 @@ function processo($array, $salvarSistema)
     # Finalizar o lançamento das comissoes
     $comissoesPagarAParte = array();
     $comissoesNegativas = array();
-    if ($salvar) {
+    if ($salvarSistema) {
         $count = 0;
-        foreach ($comissoesEncontradas as $comissao) {
+        foreach ($comissoesEncontradas as $key=>$comissao) {
             $count++;
             // echo json_encode($comissao);
             if ($comissao['valor_calc'] < 0.0) {
@@ -538,6 +535,9 @@ function processo($array, $salvarSistema)
 
                     pagarComissoes($comissao);
                 }
+
+                array_push($comissoesPagas, $comissao);
+                array_splice($comissoesEncontradas, $key);
             }
         }
         if ($log) {
@@ -639,9 +639,9 @@ function teste()
     processo($tblComissoes, false);
 }
 
-// $_POST['id_operadora'] = 2;
-// $_POST['data_inicial'] = '2021-10-15';
-// $_POST['data_final'] = '2021-10-15';
+// $_POST['id_operadora'] = 3;
+// $_POST['data_inicial'] = '2021-10-19';
+// $_POST['data_final'] = '2021-10-19';
 // $_POST['salvar'] = false;
 
 if (isset($_POST['data_inicial']) && isset($_POST['data_final'])) {
@@ -650,6 +650,12 @@ if (isset($_POST['data_inicial']) && isset($_POST['data_final'])) {
     $dataInicial = $_POST['data_inicial'];
     $dataFinal = $_POST['data_final'];
     $salvar = $_POST['salvar'];
+
+    if ($salvar == "false"){
+        $salvar = false;
+    }else{
+        $salvar = true;
+    }
 
     $buscaOperadoras = "";
 
@@ -700,5 +706,6 @@ if (isset($_POST['data_inicial']) && isset($_POST['data_final'])) {
     while ($rs_comissoes = mysqli_fetch_assoc($select_comissoes)) {
         array_push($tblComissoes, $rs_comissoes);
     }
-    $comissoesProcessadas = processo($tblComissoes, false);
+    
+    processo($tblComissoes, $salvar);
 }
