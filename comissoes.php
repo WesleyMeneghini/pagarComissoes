@@ -4,8 +4,6 @@ require_once("../includes/config.php");
 require_once('../includes/functions.php');
 require_once "pagar_comissao.php";
 
-
-
 $conect = conexaoMysqlTest();
 
 $log = false;
@@ -559,7 +557,7 @@ function processo($array, $salvarSistema)
     echo json_encode($data, JSON_UNESCAPED_UNICODE);
 
     // echo $comissoesEncontradas;
-    return [$comissoesEncontradas, $comissoesPagas, $comissoesNaoEncontradas, $comissoesNegativas];
+    // return [$comissoesEncontradas, $comissoesPagas, $comissoesNaoEncontradas, $comissoesNegativas];
 }
 
 function procuraFinalizado($idFinalizado)

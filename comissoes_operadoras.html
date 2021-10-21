@@ -44,9 +44,6 @@
 
         })
 
-
-
-
         const loaderCircle = () => (
             `<div class="preloader-wrapper big active">
                 <div class="spinner-layer spinner-blue-only">
@@ -67,7 +64,43 @@
                 currency: 'BRL'
             });
         }
+
+        const formatData = (dataString) => {
+            dataString = dataString.replace("-", "/");
+            return new Date(dataString).toLocaleDateString()
+        }
+            
+
+        $(document).ready(function () {
+            $('.tabs').tabs();
+        });
+
+        $(document).ready(function () {
+            $('.modal').modal();
+        });
+
+
+        // Efeito para abrir e fechar as informaçoes do lançamento das comissoes
+        $(document).ready(function () {
+            $('.collapsible.expandable').collapsible({
+                accordion: false
+            });
+        });
+
+        // $(document).ready(function () {
+        //     $('.collapsible').collapsible({
+        //         accordion: true
+        //     });
+        // });
+
+
     </script>
+
+    <style>
+        .carousel .carousel-item {
+            width: 100%;
+        }
+    </style>
 </head>
 
 <body>
@@ -203,40 +236,40 @@
         <div class="row" id="resultado_comissoes">
             <ul class="tabs tabs-fixed-width tab-demo z-depth-1">
                 <li class="tab">
-                    <a class="active" href="#falta_lancar">
-                        Há serem Lançadas
+                    <a class="active" href="#comissoes_sem_lancamento">
+                        Há serem Lançadas <span id="comissoes_sem_lancamento_qqt"></span>
                     </a>
                 </li>
                 <li class="tab">
-                    <a href="#test2">
-                        Lançadas
+                    <a href="#comissoes_com_lancamento">
+                        Lançadas <span id="comissoes_com_lancamento_qqt"></span>
                     </a>
                 </li>
                 <li class="tab">
-                    <a href="#test3">
-                        Nao encontradas
+                    <a href="#comissoes_nao_encontradas">
+                        Nao encontradas <span id="comissoes_nao_encontradas_qqt"></span>
                     </a>
                 </li>
                 <li class="tab">
-                    <a href="#test4">
-                        Negativas
+                    <a href="#comissoes_negativas">
+                        Negativas <span id="comissoes_negativas_qqt"></span>
                     </a>
                 </li>
                 <li class="tab">
-                    <a href="#test5">
-                        Parcelas Faltando
+                    <a href="#parcelas_faltando">
+                        Parcelas Faltando <span id="parcelas_faltando_qtt"></span>
                     </a>
                 </li>
             </ul>
-            <div id="falta_lancar" class="col s12">
+            <div id="comissoes_sem_lancamento" class="col s12">
             </div>
-            <div id="test2" class="col s12">
+            <div id="comissoes_com_lancamento" class="col s12">
             </div>
-            <div id="test3" class="col s12">
+            <div id="comissoes_nao_encontradas" class="col s12">
             </div>
-            <div id="test4" class="col s12">
+            <div id="comissoes_negativas" class="col s12">
             </div>
-            <div id="test5" class="col s12">
+            <div id="parcelas_faltando" class="col s12">
             </div>
         </div>
     </div>
@@ -256,6 +289,36 @@
             }
         });
         $salvar.trigger("change");
+
+
+        const comissoesComLancamentoHTML = (json) => {
+            $('#comissoes_com_lancamento_qqt').text(`(${json.length})`);
+
+            let html = 
+            `<ul class="collapsible expandable">
+                ${json.map(comissao => (`
+                    <li key="${comissao.txt_id_finalizado}" class="active">
+                        <div class="collapsible-header">
+                            ${comissao.operadora} - ${comissao.descricao}
+                        </div>
+                        <div class="collapsible-body">
+                            <ul>
+                                <li><strong>Parcela: </strong>${comissao.txt_parcela}</li>
+                                <li><strong>Valor Bruto: </strong>${formatMoedaReal(comissao.valor_bruto)}</li>
+                                <li><strong>Valor Comissão: </strong>${formatMoedaReal(comissao.valor_calc)}</li>
+                                <li><strong>Porcentagem: </strong> ${comissao.porcentagem}%</li>
+                                <li><strong>Numero Apólice: </strong>${comissao.n_apolice}</li>
+                                <li><strong>ID Finalizado: </strong>${comissao.txt_id_finalizado}</li>
+                                <li><strong>Data Pagamento: </strong>${formatData(comissao.dataPagamento)}</li>
+                            </ul>
+                        </div>
+                    </li>`)
+                    ).join('')
+                }
+            </ul>`;
+
+            $("#comissoes_com_lancamento").html(html);
+        }
 
         const buscaComissoes = () => {
             let dataInicial = $dataInicial.val();
@@ -277,7 +340,7 @@
                 type: 'POST',
                 data: data,
                 beforeSend: function () {
-                    $("#resultado_comissoes").html(loaderCircle());
+                    $("#comissoes_sem_lancamento").html(loaderCircle());
                 },
                 error: function (XMLHttpRequest, textStatus, errorThrown) {
                     alert("Erro!" + textStatus);
@@ -288,15 +351,31 @@
                 console.log(res);
                 const {
                     comissoesComLancamento,
+                    comissoesSemLancamento,
                     comissoesNaoEncontradas,
-                    comissoesNegativas,
-                    comissoesSemLancamento
+                    comissoesNegativas
                 } = res.data;
-                console.log(comissoesComLancamento)
+
+                // QUANTIDADES
+                $('#comissoes_sem_lancamento_qqt').text(`(${comissoesSemLancamento.length})`);
+                $('#comissoes_nao_encontradas_qqt').text(`(${comissoesNaoEncontradas.length})`);
+                $('#comissoes_negativas_qqt').text(`(${comissoesNegativas.length})`);
+
+                comissoesComLancamentoHTML(comissoesComLancamento);
 
 
 
-                $("#resultado_comissoes").html("");
+                $("#comissoes_sem_lancamento").html("");
+
+
+
+
+
+                $(document).ready(function () {
+                    $('.collapsible.expandable').collapsible({
+                        accordion: false
+                    });
+                });
             })
         }
 
@@ -315,6 +394,10 @@
                 buscaComissoes();
             }
         })
+
+
+
+
     </script>
 </body>
 
