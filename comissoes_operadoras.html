@@ -30,14 +30,8 @@
 
             }).done(function (res) {
                 var operadoras = JSON.parse(res);
-                // console.log(operadoras);
                 operadoras.forEach(operadora => {
-                    if (operadora.id == 3) {
-                        $('#slc_operadora').append(`<option value='${operadora.id}' selected>${operadora.titulo}</option>`);
-                    } else {
-                        $('#slc_operadora').append(`<option value='${operadora.id}'>${operadora.titulo}</option>`);
-
-                    }
+                    $('#slc_operadora').append(`<option value='${operadora.id}'>${operadora.titulo}</option>`);
                 })
 
             });
@@ -114,11 +108,11 @@
                     </select>
                 </div>
                 <div class="input-field col s3 ">
-                    <input type='date' id='data_inicial' name='data_inicial' value='2021-10-19' required />
+                    <input type='date' id='data_inicial' name='data_inicial' required />
                     <label for="data_inicial">Data Inicial</label>
                 </div>
                 <div class="input-field col s3 ">
-                    <input type='date' id='data_final' name='data_final' value='2021-10-19' required />
+                    <input type='date' id='data_final' name='data_final' required />
                     <label for="data_final">Data Final</label>
                 </div>
                 <div class="row">
@@ -357,7 +351,7 @@
                         $('.modal').modal();
                     });
 
-                }catch{
+                } catch {
                     $("#detalhes_lancamentos").html("");
                 }
 
