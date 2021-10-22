@@ -517,22 +517,19 @@ function processo($array, $salvarSistema)
     # Finalizar o lançamento das comissoes
     $comissoesPagarAParte = array();
     $comissoesNegativas = array();
-    if ($salvarSistema) {
-        $count = 0;
-        foreach ($comissoesEncontradas as $key=>$comissao) {
-            $count++;
-            // echo json_encode($comissao);
-            if ($comissao['valor_calc'] < 0.0) {
-                array_push($comissoesNegativas, $comissao);
-            } else {
+    $count = 0;
+    foreach ($comissoesEncontradas as $key => $comissao) {
+        $count++;
+        // echo json_encode($comissao);
+        if ($comissao['valor_calc'] < 0.0) {
+            array_push($comissoesNegativas, $comissao);
+        } else {
+            if ($salvarSistema) {
                 # COLOCAR A PARTE AS COMISSOES QUE TEM INCLUSAO
                 if ((intval($comissao['porcentagem']) < 20 && $comissao['parcela'] < 4) || $comissao['id_transacao'] == 7) {
-                    // echo "<p>Pagar a parte ".$comissao['razao_social']."</p>";
                     array_push($comissoesPagarAParte, $comissao);
                     lancaComissaoVitaliciaSemDistribuicao($comissao);
                 } else {
-                    // echo "<p>Pagar a parte ".$comissao['descricao']."</p>";
-
                     pagarComissoes($comissao);
                 }
 
@@ -540,11 +537,12 @@ function processo($array, $salvarSistema)
                 array_splice($comissoesEncontradas, $key);
             }
         }
-        if ($log) {
-            echo "<br>$count";
+    }
+
+    foreach ($comissoesNaoEncontradas as $key => $comissao) {
+        if (floatval($comissao['comissao']) < 0) {
+            array_push($comissoesNegativas, $comissao);
         }
-    } else {
-        // echo "Nao salva no banco";
     }
 
     $data = ["data" => [
@@ -555,9 +553,6 @@ function processo($array, $salvarSistema)
     ]];
 
     echo json_encode($data, JSON_UNESCAPED_UNICODE);
-
-    // echo $comissoesEncontradas;
-    // return [$comissoesEncontradas, $comissoesPagas, $comissoesNaoEncontradas, $comissoesNegativas];
 }
 
 function procuraFinalizado($idFinalizado)
@@ -644,16 +639,16 @@ function teste()
 // $_POST['data_final'] = '2021-10-19';
 // $_POST['salvar'] = false;
 
-if (isset($_POST['data_inicial']) && isset($_POST['data_final'])) {
+if (isset($_POST['data_inicial']) && isset($_POST['data_final']) && isset($_POST['salvar'])) {
 
     $idOperadora = $_POST['id_operadora'];
     $dataInicial = $_POST['data_inicial'];
     $dataFinal = $_POST['data_final'];
     $salvar = $_POST['salvar'];
 
-    if ($salvar == "false"){
+    if ($salvar == "false") {
         $salvar = false;
-    }else{
+    } else {
         $salvar = true;
     }
 
@@ -700,12 +695,42 @@ if (isset($_POST['data_inicial']) && isset($_POST['data_final'])) {
                 ORDER BY parcela;";
     }
 
-    // echo $sql;
-
     $select_comissoes = mysqli_query($conect, $sql);
     while ($rs_comissoes = mysqli_fetch_assoc($select_comissoes)) {
         array_push($tblComissoes, $rs_comissoes);
     }
-    
+
     processo($tblComissoes, $salvar);
+}
+
+
+if (isset($_POST['data_inicial']) && isset($_POST['data_final']) && isset($_POST['total'])) {
+
+    $idOperadora = $_POST['id_operadora'];
+    $dataInicial = $_POST['data_inicial'];
+    $dataFinal = $_POST['data_final'];
+
+    $total = array();
+
+    $sql = "SELECT data_pagamento, sum(comissao) as valor, referencia, dental FROM tbl_comissoes_operadora WHERE data_pagamento >= '$dataInicial' and data_pagamento <= '$dataFinal' and id_operadora = $idOperadora group by id_conta, data_pagamento, referencia, dental ORDER BY data_pagamento ;";
+
+    $select = mysqli_query($conect, $sql);
+    while ($rs = mysqli_fetch_assoc($select)) {
+
+        $sql = "SELECT id, valor FROM tbl_comissoes_operadora_total_nota WHERE referencia LIKE '{$rs["referencia"]}' AND data_pagamento = '{$rs["data_pagamento"]}' AND dental = {$rs["dental"]} ORDER BY data_pagamento ;";
+        $selectTotal = mysqli_query($conect, $sql);
+        if ($rsTotalNota = mysqli_fetch_assoc($selectTotal)) {
+            $aux = [
+                "data_pagamento" => $rs['data_pagamento'],
+                "referencia" => $rs['referencia'],
+                "total_soma" => $rs['valor'],
+                "total_nota" => $rsTotalNota['valor']
+            ];
+        }
+
+
+        array_push($total, $aux);
+    }
+
+    echo json_encode($total, JSON_UNESCAPED_UNICODE);
 }

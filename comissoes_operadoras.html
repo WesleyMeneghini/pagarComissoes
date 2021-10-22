@@ -147,89 +147,13 @@
     <div class="container">
 
         <!-- Relatório -->
-        <div class="row">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Status</th>
-                        <th>Quantidade</th>
-                        <th>Valor</th>
-                    </tr>
-                </thead>
+        <div class="row" id="relatorio">
 
-                <tbody>
-                    <tr>
-                        <td>Há serem Lançadas</td>
-                        <td>
-                        </td>
-                        <td>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Lançadas</td>
-                        <td>
-                        </td>
-                        <td>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Não Encontradas</td>
-                        <td>
-                        </td>
-                        <td>
-                        </td>
-                    </tr>
-                    <tr class="blue darken-1 white-text">
-                        <td><strong>Total</strong></td>
-                        <td>
-                            <strong>
-                            </strong>
-                        </td>
-                        <td>
-                            <strong>
-                            </strong>
-                        </td>
-                    </tr>
-
-                </tbody>
-            </table>
         </div>
 
         <!-- MOdal detalhes lançamentos -->
-        <div class="row">
-            <!-- Modal Trigger -->
-            <a class="waves-effect waves-light btn modal-trigger" href="#modal1">Detalhes Lançamentos</a>
+        <div class="row" id="detalhes_lancamentos">
 
-            <!-- Modal Structure -->
-            <div id="modal1" class="modal">
-                <div class="modal-content">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Data Pagamento da Nota</th>
-                                <th>Operadora</th>
-                                <th>Valor Soma Comissoes</th>
-                                <th>Valor da Nota Fiscal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>
-                                </td>
-                                <td>
-                                </td>
-                                <td>R$
-                                </td>
-                                <td>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="modal-footer">
-                    <a href="#!" class="modal-close waves-effect waves-green btn-flat">fechar</a>
-                </div>
-            </div>
         </div>
 
         <!-- Lançamentos -->
@@ -290,6 +214,186 @@
         });
         $salvar.trigger("change");
 
+        const relatorio = (json) => {
+
+            let {
+                comissoesComLancamento,
+                comissoesSemLancamento,
+                comissoesNaoEncontradas,
+                comissoesNegativas
+            } = json.data;
+
+
+            let valorTotalLancamentos = comissoesComLancamento.reduce((soma, atual) => soma + parseFloat(atual.valor_calc), 0);
+            let valorTotalSemLancamentos = comissoesSemLancamento.reduce((soma, atual) => soma + parseFloat(atual.valor_calc), 0);
+            let valorNaoEncontradas = comissoesNaoEncontradas.reduce((soma, atual) => soma + parseFloat(atual.comissao), 0);
+
+            let qttTotal = comissoesSemLancamento.length + comissoesComLancamento.length + comissoesNaoEncontradas.length;
+            let valorTotal = [
+                valorTotalLancamentos,
+                valorTotalSemLancamentos,
+                valorNaoEncontradas
+            ].reduce((soma, total) => soma + total, 0);
+
+            let html = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Quantidade</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>Há serem Lançadas</td>
+                        <td>(${comissoesSemLancamento.length})</td>
+                        <td>${formatMoedaReal(valorTotalSemLancamentos)}</td>
+                    </tr>
+                    <tr>
+                        <td>Lançadas</td>
+                        <td>(${comissoesComLancamento.length})</td>
+                        <td>${formatMoedaReal(valorTotalLancamentos)}</td>
+                    </tr>
+                    <tr>
+                        <td>Não Encontradas</td>
+                        <td>(${comissoesNaoEncontradas.length})</td>
+                        <td>${formatMoedaReal(valorNaoEncontradas)}</td>
+                    </tr>
+                    <tr class="blue darken-1 white-text">
+                        <td><strong>Total</strong></td>
+                        <td>
+                            <strong>
+                                (${qttTotal})
+                            </strong>
+                        </td>
+                        <td>
+                            <strong>
+                                ${formatMoedaReal(valorTotal)}
+                            </strong>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>`;
+
+            $("#relatorio").html(html);
+        }
+
+        const detalhesLancamentos = () => {
+
+            let dataInicial = $dataInicial.val();
+            let dataFinal = $dataFinal.val();
+            let idOperadora = $idOperadora.val();
+
+            const form = new FormData();
+            form.append("data_inicial", $dataInicial.val());
+            form.append("data_final", $dataFinal.val());
+            form.append("id_operadora", $idOperadora.val());
+            form.append("total", true);
+
+            const settings = {
+                "async": true,
+                "crossDomain": true,
+                "url": "comissoes.php",
+                "method": "POST",
+                "headers": {},
+                "processData": false,
+                "contentType": false,
+                "mimeType": "multipart/form-data",
+                "data": form,
+                beforeSend: function () {
+                    $("#detalhes_lancamentos").html(loaderCircle());
+                }
+            };
+
+            $.ajax(settings).done(function (response) {
+                // console.log(response);
+                let res = JSON.parse(response);
+                try {
+
+                    const html = `
+                <a class="waves-effect waves-light btn modal-trigger" href="#modal1">Detalhes Lançamentos</a>
+                <div id="modal1" class="modal">
+                    <div class="modal-content">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data Pagamento da Nota</th>
+                                    <th>Operadora</th>
+                                    <th>Valor Soma Comissoes</th>
+                                    <th>Valor da Nota Fiscal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${res.map(total => (`
+                                    <tr>
+                                        <td>
+                                            ${formatData(total.data_pagamento)}
+                                        </td>
+                                        <td>
+                                            ${total.referencia}
+                                        </td>
+                                        <td>
+                                            ${formatMoedaReal(total.total_soma)}
+                                        </td>
+                                        <td>
+                                            ${formatMoedaReal(total.total_nota)}
+                                        </td>
+                                    </tr>
+                                    `)).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="#!" class="modal-close waves-effect waves-green btn-flat">fechar</a>
+                    </div>
+                </div>
+                `;
+                    $("#detalhes_lancamentos").html(html);
+
+                    $(document).ready(function () {
+                        $('.modal').modal();
+                    });
+
+                }catch{
+                    $("#detalhes_lancamentos").html("");
+                }
+
+            });
+        }
+
+
+        const comissoesNaoEncontradasHTML = (json) => {
+            // console.log(json)
+            $('#comissoes_nao_encontradas_qqt').text(`(${json.length})`);
+
+            let html =
+                `<ul class="collapsible expandable">
+                ${json.map(comissao => (`
+                    <li class="active">
+                        <div class="collapsible-header">
+                            ${comissao.referencia} - ${comissao.nome_contrato}
+                        </div>
+                        <div class="collapsible-body">
+                            <ul>
+                                <li><strong>Parcela: </strong>${comissao.parcela}</li>
+                                <li><strong>Valor Bruto: </strong>${formatMoedaReal(comissao.base_comissao)}</li>
+                                <li><strong>Valor Comissão: </strong>${formatMoedaReal(comissao.comissao)}</li>
+                                <li><strong>Porcentagem: </strong> ${comissao.porcentagem}%</li>
+                                <li><strong>Contrato Atual: </strong>${comissao.contrato_atual}</li>
+                                <li><strong>Proposta: </strong>${comissao.proposta}</li>
+                                <li><strong>Data Pagamento: </strong>${formatData(comissao.data_pagamento)}</li>
+                            </ul>
+                        </div>
+                    </li>`)
+                ).join('')
+                }
+            </ul>`;
+
+            $("#comissoes_nao_encontradas").html(html);
+        }
 
         const comissoesComLancamentoHTML = (json) => {
             $('#comissoes_com_lancamento_qqt').text(`(${json.length})`);
@@ -321,7 +425,7 @@
         }
 
         const comissoesSemLancamentoHTML = (json) => {
-            console.log(json)
+            // console.log(json)
             $('#comissoes_sem_lancamento_qqt').text(`(${json.length})`);
 
             let html =
@@ -387,7 +491,7 @@
 
             $.ajax(settings).done(function (msg) {
                 let res = JSON.parse(msg);
-                console.log(res);
+                // console.log(res);
                 const {
                     comissoesComLancamento,
                     comissoesSemLancamento,
@@ -395,18 +499,20 @@
                     comissoesNegativas
                 } = res.data;
 
+                relatorio(res);
+
                 if (comissoesSemLancamento.length == 0) {
                     document.getElementById('lancados').click();
-                }else{
+                } else {
                     document.getElementById('ha_lancados').click();
                 }
 
                 // QUANTIDADES
-                $('#comissoes_nao_encontradas_qqt').text(`(${comissoesNaoEncontradas.length})`);
                 $('#comissoes_negativas_qqt').text(`(${comissoesNegativas.length})`);
 
                 comissoesComLancamentoHTML(comissoesComLancamento);
                 comissoesSemLancamentoHTML(comissoesSemLancamento);
+                comissoesNaoEncontradasHTML(comissoesNaoEncontradas)
 
                 $(document).ready(function () {
                     $('.collapsible.expandable').collapsible({
@@ -428,6 +534,7 @@
             } else if ($idOperadora.val() == 0) {
                 alert("Selecione uma operadora!");
             } else {
+                detalhesLancamentos();
                 buscaComissoes();
             }
         })
